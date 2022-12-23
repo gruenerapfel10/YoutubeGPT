@@ -1,0 +1,202 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Roboto', sans-serif;
+    color: #fff;
+    box-sizing: border-box;
+    display: block;
+}
+
+.main-toggle-button {
+    display: block;
+    width: 100px;
+    height: 32px;
+    margin: none;
+    padding: none;
+    border-radius: 8px;
+    background-color: rgba(39,39,39);
+    color: #fff;
+    border: none;
+    font-family: 'Roboto', sans-serif;
+    font-weight: bold;
+}
+
+.summariser-extension {
+    width: 600px;
+    height: 800px;
+    position: absolute;
+    display: none;
+    background-color: rgba(27, 27, 35);
+    border-radius: 5px;
+    border: 4px solid rgba(47, 47, 57);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 5px;
+    flex-direction: column;
+    z-index: 10000000;
+    top: 24px;
+    border-radius: 10px;
+}
+
+body {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #111;
+}
+
+.info-div-container {
+  width: 100%;
+  height: 80%;
+  background-color: transparent;
+}
+
+.input-form-container {
+  width: 100%;
+  height: 20%;
+  background-color: transparent;
+}
+
+.info-div {
+  width: 100%;
+  height: 100%;
+  background-color: #444654;
+  border-top-right-radius: 6px;
+  border-top-left-radius: 6px;
+}
+
+.input-form {
+  width: 100%;
+  height: 100%;
+  background-color: #272831;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom-right-radius: 6px;
+  border-bottom-left-radius: 6px;
+  position: relative;
+  padding-inline: 20px;
+}
+
+.textarea-container {
+  background-color: #46485a;
+  display: flex;
+  align-items: center;
+  /* justify-content: center; */
+  margin: 0;
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 5px;
+  position: relative;
+}
+
+textarea {
+  background-color: transparent;
+  overflow: scroll;
+  line-height: 1.25em;
+  height: 1.25em;
+  resize: none;
+  outline: none;
+  border: none;
+  padding: 10px;
+  padding-left: 16px;
+  width: calc(100% - 50px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  letter-spacing: 1px;
+}
+
+.enter-button{
+  height: 30px;
+  width: 30px;
+  border: none;
+  cursor: pointer;
+  background-color: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  overflow: hidden;
+  position: absolute;
+  right: 10px;
+  top: 25%;
+}
+
+.enter-button:hover {
+  background-color: #111;
+}
+
+.enter-button:hover {
+  background-color: #222;
+}
+
+.enter-button > svg {
+  scale: 1.5;
+  background-color: transparent;
+}
+
+.loading-dots {
+  height: 100%;
+  width: 100%;
+  text-justify: center;
+}
+
+.assistant-message {
+  width: 100%;
+  min-height: 50px;
+  background-color: #272831;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.user-message {
+  width: 100%;
+  min-height: 50px;
+  background-color: #444654;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.assistant-icon {
+  width: 5%;
+  scale: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.assistant-icon > svg {
+  fill: rgba(2, 195, 154);
+}
+.user-icon {
+  width: 5%;
+  height: 100%;
+  scale: 1.5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  padding: 5px;
+}
+
+.question {
+  width: 95%;
+  font-size: 100%;
+  white-space: normal;
+  padding-left: 20px;
+  letter-spacing: 0.5px;
+  line-height: 24px;
+}

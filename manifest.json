@@ -1,0 +1,21 @@
+{
+
+    "manifest_version": 2,
+    "name": "Youtube Video Summariser",
+    "version": "1.0",
+  
+    "description": "Uses OpenAI's ChatGPT model to summarise youtube videos, save time, and also be able to ask qusetions about the video and what it talks about.",
+  
+    "icons": {
+    },
+    "permissions": ["*://*.youtube.com/*", "https://chat.openai.com/backend-api/conversation","storage", "webRequest", "webRequestBlocking", "webNavigation"],
+    "content_scripts": [
+      {
+        "matches": ["*://*.youtube.com/*"],
+        "js": ["summariser.js"],
+        "css": ["style.css"]
+      }
+    ]
+  
+  }
+  
