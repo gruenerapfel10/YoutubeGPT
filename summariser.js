@@ -714,7 +714,11 @@ function Extension() {
         }
   
         updateMessages();
-        infoDiv.scrollTop = infoDiv.scrollHeight;
+        const isAtBottom = infoDiv.scrollHeight - infoDiv.scrollTop === infoDiv.clientHeight;
+
+        if (isAtBottom){
+          infoDiv.scrollTop = infoDiv.scrollHeight;
+        }
       } catch (error) {
 
       }
@@ -760,6 +764,7 @@ function Extension() {
 ***REMOVED***
 ***REMOVED***
 
+***REMOVED***
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***
