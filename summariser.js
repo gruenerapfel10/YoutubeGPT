@@ -277,7 +277,9 @@ const EXTENSION_WIDTH_CINEMA = 500;
 const ACCESS_TOKEN = "";
 const MESSAGES = localStorage.getItem("summariser-extension-messages") ? JSON.parse(localStorage.getItem("summariser-extension-messages")) : () => { localStorage.setItem("summariser-extension-messages", JSON.stringify([])); return JSON.parse(localStorage.getItem("summariser-extension")) }
 
-window.addEventListener('pageshow', function () { setTimeout(main, 5000) });
+// window.addEventListener('pageshow', function () { setTimeout(main, 5000) });
+
+window.requestIdleCallback(() => {setTimeout(main, 5000)});
 
 function main() {
   const button_parent = document.querySelector("#above-the-fold > #title");
@@ -440,7 +442,7 @@ function Extension() {
 
 
 /*
-
+  
 
 
 
