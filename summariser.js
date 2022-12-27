@@ -6,6 +6,7 @@ const ACCESS_TOKEN = "";
 const SESSION_TOKEN = ""
 const chunkSize = 16000;
 const promptString = ""
+let conversation = null;
 
 const specialCharacters = [
   "@",
@@ -473,7 +474,7 @@ function Button() {
         const VIDEO_DATE = "";
         const VIDEO_DESCRIPTION = "";
         const OTHER_CONTEXT = "";
-        const prompt = `roleplay: i will give you a series of transcript parts for a youtube video, you need to use a dictionary that i give you to interpret the encoded messages, once i tell you SUMMARIZE, you should summarise the entire transcript by treating all of the individual parts i gave you as one whole transcript, if asked to write code you should use proper formatting, you should only reply with "Understood." until i tell you to summarise, you should also use your own knowledge in your summary to give a better summary, you should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}", remember you should only summarise if i tell you to:  `
+        const prompt = `roleplay: i will give you a series of transcript parts for a youtube video, you need to use a dictionary that i give you to interpret the encoded messages, once i tell you SUMMARIZE, you should summarise the entire transcript by treating all of the individual parts i gave you as one whole transcript, if asked to write code you should use proper formatting, you should only reply with "Understood." until i tell you to summarise, you should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}", remember you should only summarise if i tell you to, if you see !!! it is a palceholder for a profanity, whenever I refer to a transcript or video assume that i'm referring to this video's transcript unless explicitly stated otherwise, remember to also use your own knowledge to add further understanding and context for yourself: `
 
         // add a preferred level of detail setting
 
@@ -481,6 +482,7 @@ function Button() {
 
         let chunk = transcription.slice(start, start + difference);
         chunk = chunk.replace(/\[Music\]/g, "");
+        chunk = chunk.replace(/\[ __ \]/g, "!!!");
         count += 1;
         let modification = replaceWords(
           `TRANSCRIPT YOUTUBE VIDEO PART ${count}: ${chunk}`
@@ -506,10 +508,10 @@ function Button() {
         const chunk = chunks[i]
         if (i === 0) {
           // first chunk so need to use startNewConversation function
-          const r = await startNewConversation(chunk);
+          conversation = await startNewConversation(chunk);
         } else{
           // continue the conversation
-          const r = await continueConversation(chunk);
+          conversation = await continueConversation(chunk);
         }
       }
 
@@ -704,8 +706,6 @@ function Extension() {
     textarea.style.height = Math.min(textarea.scrollHeight, 160) + "px";
     textareaContainer.style.height = Math.min(textarea.scrollHeight, 160) + "px";
   })
-
-  let conversation = null;
 
   function handleSubmit(event) {
     event.preventDefault();
