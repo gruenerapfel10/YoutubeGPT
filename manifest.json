@@ -8,7 +8,7 @@
   
     "icons": {
     },
-    "permissions": [ "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*", "https://chat.openai.com/backend-api/conversation","storage", "webRequest", "webRequestBlocking", "webNavigation"],
+    "permissions": [ "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*", "https://chat.openai.com/backend-api/conversation","storage", "webRequest", "webRequestBlocking", "webNavigation", "activeTab"],
     "content_scripts": [
       {
         "matches": [ "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*"],
