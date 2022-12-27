@@ -42,6 +42,29 @@ let MESSAGES = localStorage.getItem("summariser-extension-messages")
 
 // window.addEventListener('pageshow', function () { setTimeout(main, 5000) });
 
+function formatText(text) {
+  // Split the text into lines by the newline character
+  const lines = text.split('\n');
+
+  // Create the parent element
+  const parent = document.createElement('ul');
+
+  // Loop through the lines and format them as HTML
+  for (let i = 0; i < lines.length; i++) {
+    // Create a new element for each line
+    const element = document.createElement('li');
+
+    // Set the innerHTML of the element to the line
+    element.innerHTML = lines[i];
+
+    // Append the element to the parent element
+    parent.appendChild(element);
+  }
+
+  // Return the parent element
+  return parent;
+}
+
 function newMessage(type, text) {
   if (type === "user") {
     const message = document.createElement("div");
@@ -49,9 +72,8 @@ function newMessage(type, text) {
     const icon = Icon("user");
     message.appendChild(icon);
 
-    const h1 = document.createElement("h1");
+    const h1 = formatText(text);
     h1.className = "question";
-    h1.innerHTML = text;
     message.appendChild(h1);
 
     return message
@@ -62,9 +84,8 @@ function newMessage(type, text) {
   const icon = Icon("assistant")
   message.appendChild(icon);
 
-  const h1 = document.createElement("h1");
+  const h1 = formatText(text);
   h1.className = "question";
-  h1.innerHTML = text;
   message.appendChild(h1);
 
   return message
@@ -682,7 +703,9 @@ function Extension() {
   function updateMessages() {
     infoDiv.innerHTML = "";
     for (let i = 0; i < MESSAGES.length; i++) {
-      const message = MESSAGES[i]
+      const message = MESSAGES[i];
+
+      console.log(message.message);
 
       const messageDiv = newMessage(message.from, message.message);
 
