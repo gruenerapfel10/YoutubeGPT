@@ -189,6 +189,204 @@ function findMostAreaWords(text) {
   return results;
 }
 
+const escapeString = str => str.replace(/[\\"\[\]]/g, "\\$&");
+
+async function startNewConversation(initialMessage) {
+  const id = generateFormattedString();
+  const parent_id = generateFormattedString();
+
+
+  let body = {"action": "next","messages": [{"id": id,"role": "user","content": {"content_type": "text","parts": [initialMessage]}}],"parent_message_id": parent_id,"model": "text-davinci-002-render"}
+
+  MESSAGES.push({
+    "from": "user",
+    "message": initialMessage,
+    "message_id": id,
+    "parent_message_id": parent_id,
+    "conversation_id": null,
+  })
+
+  MESSAGES.push(
+    {
+      "from": "assistant",
+      "message": "",
+      "message_id": "",
+      "conversation_id": "",
+    })
+
+  updateMessages();
+
+  console.log(JSON.stringify(body));
+
+  const response = await fetch("https://chat.openai.com/backend-api/conversation", {
+    "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        "Accept": "text/event-stream",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer ",
+    },
+    "body": `${JSON.stringify(body)}`,
+    "method": "POST",
+});
+
+  console.log(response);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let isFirstMessage = true;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done || decoder.decode(value).length === 14) {
+      break;
+    }
+
+    let string = decoder.decode(value).toString();
+    let lines = string.split("\n\n");
+    let data = getLastNonEmptyString(lines);
+    let filtered = data.replace(/data: [DONE]: /g, "");
+    filtered = filtered.replace(/data: /g, "");
+
+    try {
+      const message_response = JSON.parse(filtered);
+
+      const response_message_id = message_response.message.id;
+      const response_conversation_id = message_response.conversation_id;
+      const response_error = message_response.error
+      const response_message = message_response.message.content.parts[0]
+      const response_role = message_response.message.role
+
+      if (isFirstMessage) {
+        isFirstMessage = false;
+        moderations(initialMessage, id, response_conversation_id);
+      }
+
+      MESSAGES[MESSAGES.length - 1] =
+      {
+        "from": response_role,
+        "message": response_message,
+        "message_id": response_message_id,
+        "conversation_id": response_conversation_id
+      }
+
+      console.log(response_conversation_id)
+
+      updateMessages();
+
+      const isAtBottom = infoDiv.scrollHeight - infoDiv.scrollTop === infoDiv.clientHeight;
+
+      if (isAtBottom) {
+        infoDiv.scrollTop = infoDiv.scrollHeight;
+      }
+    } catch (error) {
+
+    }
+  }
+
+  // const latestMessage = MESSAGES[MESSAGES.length -1];
+
+  // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
+
+  return { response, id, parent_id };
+}
+
+async function continueConversation(message) {
+  const id = generateFormattedString();
+  let last_user_message = MESSAGES[MESSAGES.length - 2];
+  let last_assistant_message = MESSAGES[MESSAGES.length - 1];
+  const conversation_id = last_assistant_message.conversation_id
+
+  let body = {"action": "next", "conversation_id": conversation_id, "messages": [{"id": id,"role": "user","content": {"content_type": "text","parts": [message]}}],"parent_message_id": last_assistant_message.message_id,"model": "text-davinci-002-render"}
+
+  MESSAGES.push({
+    "from": "user",
+    "message": message,
+    "message_id": id,
+    "parent_message_id": last_user_message.message_id,
+    "conversation_id": conversation_id
+  });
+
+  MESSAGES.push(
+    {
+      "from": "assistant",
+      "message": "",
+      "message_id": "",
+      "conversation_id": conversation_id,
+    })
+    
+  updateMessages();
+
+  const response = await fetch("https://chat.openai.com/backend-api/conversation", {
+    "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        "Accept": "text/event-stream",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer ",
+    },
+    "body": `${JSON.stringify(body)}`,
+    "method": "POST",
+});
+
+  // moderations(message, id, MESSAGES[MESSAGES.length - 1].conversation_id);
+
+  console.log(response);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done || decoder.decode(value).length === 14) {
+      break;
+    }
+
+    let string = decoder.decode(value).toString();
+    let lines = string.split("\n\n");
+    let data = getLastNonEmptyString(lines);
+    let filtered = data.replace(/data: [DONE]: /g, "");
+    filtered = filtered.replace(/data: /g, "");
+
+    try {
+      const message_response = JSON.parse(filtered);
+
+      const response_message_id = message_response.message.id;
+      const response_conversation_id = message_response.conversation_id;
+      const response_error = message_response.error
+      const response_message = message_response.message.content.parts[0]
+      const response_role = message_response.message.role
+
+      console.log(response_conversation_id)
+
+      MESSAGES[MESSAGES.length - 1] =
+      {
+        "from": response_role,
+        "message": response_message,
+        "message_id": response_message_id,
+        "conversation_id": conversation_id,
+      }
+
+      updateMessages();
+
+      // const isAtBottom = infoDiv.scrollHeight - infoDiv.scrollTop === infoDiv.clientHeight;
+
+      // if (isAtBottom) {
+      //   infoDiv.scrollTop = infoDiv.scrollHeight;
+      // }
+    } catch (error) {
+
+    }
+  }
+
+  const latestMessage = MESSAGES[MESSAGES.length -1];
+
+  // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
+
+  // reader.cancel();
+
+  return { response };
+}
+
 function Button() {
   const button = document.createElement("button");
   let summarizeDisabled = false;
@@ -198,7 +396,7 @@ function Button() {
 
   button.addEventListener("click", async (event) => {
     const extension = document.querySelector(".summariser-extension");
-    // extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
+    extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
 
     if (summarizeDisabled === false) {
       const scriptTags = document.querySelectorAll('script');
@@ -227,7 +425,7 @@ function Button() {
       match = regex.exec(ytInitialData.innerHTML);
       ytInitialData = JSON.parse(match[1]);
 
-      const params = ytInitialData.engagementPanels[ytInitialData.engagementPanels.length - 1].engagementPanelSectionListRenderer.content.continuationItemRenderer.continuationEndpoint.getTranscriptEndpoint.params;
+      const params = ytInitialData.engagementPanels[ytInitialData.engagementPanels.length - 1].engagementPanelSectionListRenderer.content.continuationItemRenderer.continuationEndpoint?.getTranscriptEndpoint.params;
 
       const r = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
         "body": JSON.stringify({
@@ -262,25 +460,25 @@ function Button() {
       let start = 0;
       let count = 0;
       let isFirstMessage = true;
+      const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Use chapters and use bullet points in your summary, use your own knowledge to aid yourself in interpretation and context. Your summary needs to be detailed and accurate but concise, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points.`
 
       while (start < transcription.length) {
-        const VIDEO_NAME = "SIDEMEN CHRISTMAS MUKBANG";
+        const VIDEO_NAME = document.querySelector("h1.ytd-watch-metadata > yt-formatted-string:nth-child(1)").innerText;
         const VIDEO_DATE = "";
         const VIDEO_DESCRIPTION = "";
         const OTHER_CONTEXT = "";
         const prompt = `roleplay: i will give you a series of transcript parts for a youtube video, you need to use a dictionary that i give you to interpret the encoded messages, once i tell you SUMMARIZE, you should summarise the entire transcript by treating all of the individual parts i gave you as one whole transcript, if asked to write code you should use proper formatting, you should only reply with "Understood." until i tell you to summarise, you should also use your own knowledge in your summary to give a better summary, you should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}", remember you should only summarise if i tell you to:  `
 
         // add a preferred level of detail setting
-        const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Use chapters and use bullet points in your summary, use your own knowledge to aid yourself in interpretation and context. Your summary needs to be detailed and accurate but concise, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points.`
 
         const difference = isFirstMessage ? chunkSize - (prompt.length + 100) : chunkSize
 
         let chunk = transcription.slice(start, start + difference);
         chunk = chunk.replace(/\[Music\]/g, "");
-        let modification = replaceWords(
-          `TRANSCRIPT YOUTUBE VIDEO PART ${count + 1}: ${chunk}`
-        );
         count += 1;
+        let modification = replaceWords(
+          `TRANSCRIPT YOUTUBE VIDEO PART ${count}: ${chunk}`
+        );
         chunk = modification.modifiedText;
         chunk = chunk.replace(/\s+/g, " ");
         const final = `${prompt}
@@ -296,9 +494,17 @@ function Button() {
         }
       }
 
+      chunks.push(summarisePrompt);
+
       for (let i=0; i < chunks.length; i++) {
         const chunk = chunks[i]
-        console.log(chunk)
+        if (i === 0) {
+          // first chunk so need to use startNewConversation function
+          const r = await startNewConversation(chunk);
+        } else{
+          // continue the conversation
+          const r = await continueConversation(chunk);
+        }
       }
 
       if (chunks.length > 1) {
@@ -443,198 +649,6 @@ async function moderations(input, id, conversation_id) {
     "method": "POST"
 });
 }
-
-async function startNewConversation(initialMessage) {
-  const id = generateFormattedString();
-  const parent_id = generateFormattedString();
-
-  let body = `{"action": "next","messages": [{"id": "${id}","role": "user","content": {"content_type": "text","parts": ["${initialMessage}"]}}],"parent_message_id": "${parent_id}","model": "text-davinci-002-render"}`
-
-  MESSAGES.push({
-    "from": "user",
-    "message": initialMessage,
-    "message_id": id,
-    "parent_message_id": parent_id,
-    "conversation_id": null,
-  })
-
-  MESSAGES.push(
-    {
-      "from": "assistant",
-      "message": "",
-      "message_id": "",
-      "conversation_id": "",
-    })
-
-  updateMessages();
-
-  const response = await fetch(`https://chat.openai.com/backend-api/conversation`, {
-    "headers": {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-      "Accept": "text/event-stream",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIxMDQ3ODcsImV4cCI6MTY3MjcwOTU4NywiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.I5itUif1yHRHmCo3dNTLCu_AKEaqhtWOynSeeKxI9nIYPeDOrRphU_Qt5YFuNEy4PT9gz6uJlQdFQug8fyw7ehFfkz7o6Jl5hqhzEYjMfwz9ilrBnmSCgfMbIVTWY27OWyrxzWkW2B0Ab-cFHEp1FROvLeoxao3Y9wXbt1QD6DAJbACqr3n44NUNj1YfgQHgd4GEeIPTH_Sf0VVLOqXrJDAvGWT1hORZuMqcAcIkrx-vV8kQDZSTOyC-QRFqWhZ5HYnsJ772lShDeNUuzdlCm5FFkJkgFnNmOsjphSnxkc4AyCRs45KTarqoKUN8JduIk9z5EWLojzTX6jgupZdGGg",
-    },
-    "body": `${body}`,
-    "method": "POST",
-  })
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let isFirstMessage = true;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done || decoder.decode(value).length === 14) {
-      break;
-    }
-
-    let string = decoder.decode(value).toString();
-    let lines = string.split("\n\n");
-    let data = getLastNonEmptyString(lines);
-    let filtered = data.replace(/data: [DONE]: /g, "");
-    filtered = filtered.replace(/data: /g, "");
-
-    try {
-      const message_response = JSON.parse(filtered);
-
-      const response_message_id = message_response.message.id;
-      const response_conversation_id = message_response.conversation_id;
-      const response_error = message_response.error
-      const response_message = message_response.message.content.parts[0]
-      const response_role = message_response.message.role
-
-      if (isFirstMessage) {
-        isFirstMessage = false;
-        moderations(initialMessage, id, response_conversation_id);
-      }
-
-      MESSAGES[MESSAGES.length - 1] =
-      {
-        "from": response_role,
-        "message": response_message,
-        "message_id": response_message_id,
-        "conversation_id": response_conversation_id
-      }
-
-      console.log(response_conversation_id)
-
-      updateMessages();
-
-      const isAtBottom = infoDiv.scrollHeight - infoDiv.scrollTop === infoDiv.clientHeight;
-
-      if (isAtBottom) {
-        infoDiv.scrollTop = infoDiv.scrollHeight;
-      }
-    } catch (error) {
-
-    }
-  }
-
-  // const latestMessage = MESSAGES[MESSAGES.length -1];
-
-  // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
-
-  return { response, id, parent_id };
-}
-
-async function continueConversation(message) {
-  const id = generateFormattedString();
-  let last_user_message = MESSAGES[MESSAGES.length - 2];
-  let last_assistant_message = MESSAGES[MESSAGES.length - 1];
-  const conversation_id = last_assistant_message.conversation_id
-
-  let body = `{"action": "next","conversation_id": "${conversation_id}","messages": [{"id": "${id}","role": "user","content": {"content_type": "text","parts": ["${message}"]}}],"parent_message_id": "${last_assistant_message.message_id}","model": "text-davinci-002-render"}`
-
-  MESSAGES.push({
-    "from": "user",
-    "message": message,
-    "message_id": id,
-    "parent_message_id": last_user_message.message_id,
-    "conversation_id": conversation_id
-  });
-
-  MESSAGES.push(
-    {
-      "from": "assistant",
-      "message": "",
-      "message_id": "",
-      "conversation_id": conversation_id,
-    })
-    
-  updateMessages();
-
-  const response = await fetch(`https://chat.openai.com/backend-api/conversation`, {
-    "headers": {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-      "Accept": "text/event-stream",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIxMDQ3ODcsImV4cCI6MTY3MjcwOTU4NywiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.I5itUif1yHRHmCo3dNTLCu_AKEaqhtWOynSeeKxI9nIYPeDOrRphU_Qt5YFuNEy4PT9gz6uJlQdFQug8fyw7ehFfkz7o6Jl5hqhzEYjMfwz9ilrBnmSCgfMbIVTWY27OWyrxzWkW2B0Ab-cFHEp1FROvLeoxao3Y9wXbt1QD6DAJbACqr3n44NUNj1YfgQHgd4GEeIPTH_Sf0VVLOqXrJDAvGWT1hORZuMqcAcIkrx-vV8kQDZSTOyC-QRFqWhZ5HYnsJ772lShDeNUuzdlCm5FFkJkgFnNmOsjphSnxkc4AyCRs45KTarqoKUN8JduIk9z5EWLojzTX6jgupZdGGg",
-    },
-    "body": `${body}`,
-    "method": "POST",
-  })
-
-  // moderations(message, id, MESSAGES[MESSAGES.length - 1].conversation_id);
-
-  console.log(response);
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done || decoder.decode(value).length === 14) {
-      break;
-    }
-
-    let string = decoder.decode(value).toString();
-    let lines = string.split("\n\n");
-    let data = getLastNonEmptyString(lines);
-    let filtered = data.replace(/data: [DONE]: /g, "");
-    filtered = filtered.replace(/data: /g, "");
-
-    try {
-      const message_response = JSON.parse(filtered);
-
-      const response_message_id = message_response.message.id;
-      const response_conversation_id = message_response.conversation_id;
-      const response_error = message_response.error
-      const response_message = message_response.message.content.parts[0]
-      const response_role = message_response.message.role
-
-      console.log(response_conversation_id)
-
-      MESSAGES[MESSAGES.length - 1] =
-      {
-        "from": response_role,
-        "message": response_message,
-        "message_id": response_message_id,
-        "conversation_id": conversation_id,
-      }
-
-      updateMessages();
-
-      // const isAtBottom = infoDiv.scrollHeight - infoDiv.scrollTop === infoDiv.clientHeight;
-
-      // if (isAtBottom) {
-      //   infoDiv.scrollTop = infoDiv.scrollHeight;
-      // }
-    } catch (error) {
-
-    }
-  }
-
-  const latestMessage = MESSAGES[MESSAGES.length -1];
-
-  // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
-
-  reader.cancel();
-
-  return { response };
-}
-
 
 function Extension() {
   let isLoading = false;
