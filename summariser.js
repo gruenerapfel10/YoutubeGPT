@@ -198,9 +198,9 @@ function Button() {
 
   button.addEventListener("click", async (event) => {
     const extension = document.querySelector(".summariser-extension");
-    extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
+    // extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
 
-    if (!summarizeDisabled) {
+    if (summarizeDisabled === false) {
       const scriptTags = document.querySelectorAll('script');
       let ytInitialData;
       let apiKeySource;
@@ -213,7 +213,7 @@ function Button() {
           apiKeySource = scriptTag
         }
       }
-
+      
       // Use a regular expression to parse the function
       let regex = /ytcfg\.set\((\{.*\})\);/;
       let match = regex.exec(apiKeySource.textContent);
@@ -226,6 +226,7 @@ function Button() {
       regex = /ytInitialData\s*=\s*(.+?);/;
       match = regex.exec(ytInitialData.innerHTML);
       ytInitialData = JSON.parse(match[1]);
+
       const params = ytInitialData.engagementPanels[ytInitialData.engagementPanels.length - 1].engagementPanelSectionListRenderer.content.continuationItemRenderer.continuationEndpoint.getTranscriptEndpoint.params;
 
       const r = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
@@ -270,7 +271,7 @@ function Button() {
         const prompt = `roleplay: i will give you a series of transcript parts for a youtube video, you need to use a dictionary that i give you to interpret the encoded messages, once i tell you SUMMARIZE, you should summarise the entire transcript by treating all of the individual parts i gave you as one whole transcript, if asked to write code you should use proper formatting, you should only reply with "Understood." until i tell you to summarise, you should also use your own knowledge in your summary to give a better summary, you should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}", remember you should only summarise if i tell you to:  `
 
         // add a preferred level of detail setting
-        const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription, use chapters, use bullet points, use your own knowledge to aid yourself in interpreting and context, be accurate but concise, be prepared to answer any questions about the video or topics, themes discussed in the video.`
+        const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Use chapters and use bullet points in your summary, use your own knowledge to aid yourself in interpretation and context. Your summary needs to be detailed and accurate but concise, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points.`
 
         const difference = isFirstMessage ? chunkSize - (prompt.length + 100) : chunkSize
 
@@ -293,19 +294,11 @@ function Button() {
           chunks.push(chunk);
           start += difference;
         }
-
       }
 
-      for (let i = 0; i < chunks.length; i++) {
+      for (let i=0; i < chunks.length; i++) {
         const chunk = chunks[i]
-
-        if (i === chunks.length) {
-          continueConversation(summarisePrompt);
-        } else if (i === 0) {
-          startNewConversation(chunk);
-        } else {
-          continueConversation(chunk);
-        }
+        console.log(chunk)
       }
 
       if (chunks.length > 1) {
@@ -314,9 +307,9 @@ function Button() {
         // regular procedure
       }
     }
-  });
+    summarizeDisabled = true;
 
-  summarizeDisabled = true;
+  });
 
   return button
 }
@@ -437,6 +430,20 @@ function getLastNonEmptyString(strings) {
   return "";
 }
 
+async function moderations(input, id, conversation_id) {
+  await fetch("https://chat.openai.com/backend-api/moderations", {
+    "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Content-Type": "application/json",
+        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIxMDQ3ODcsImV4cCI6MTY3MjcwOTU4NywiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.I5itUif1yHRHmCo3dNTLCu_AKEaqhtWOynSeeKxI9nIYPeDOrRphU_Qt5YFuNEy4PT9gz6uJlQdFQug8fyw7ehFfkz7o6Jl5hqhzEYjMfwz9ilrBnmSCgfMbIVTWY27OWyrxzWkW2B0Ab-cFHEp1FROvLeoxao3Y9wXbt1QD6DAJbACqr3n44NUNj1YfgQHgd4GEeIPTH_Sf0VVLOqXrJDAvGWT1hORZuMqcAcIkrx-vV8kQDZSTOyC-QRFqWhZ5HYnsJ772lShDeNUuzdlCm5FFkJkgFnNmOsjphSnxkc4AyCRs45KTarqoKUN8JduIk9z5EWLojzTX6jgupZdGGg",
+    },
+    "body": `{\"input\":\"${input}\",\"model\":\"text-moderation-playground\",\"conversation_id\":\"${conversation_id}\",\"message_id\":\"${id}\"}`,
+    "method": "POST"
+});
+}
+
 async function startNewConversation(initialMessage) {
   const id = generateFormattedString();
   const parent_id = generateFormattedString();
@@ -456,7 +463,6 @@ async function startNewConversation(initialMessage) {
       "from": "assistant",
       "message": "",
       "message_id": "",
-      "parent_message_id": id,
       "conversation_id": "",
     })
 
@@ -474,10 +480,10 @@ async function startNewConversation(initialMessage) {
     "method": "POST",
   })
 
-  console.log(body);
-
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let isFirstMessage = true;
+
   while (true) {
     const { done, value } = await reader.read();
     if (done || decoder.decode(value).length === 14) {
@@ -498,14 +504,17 @@ async function startNewConversation(initialMessage) {
       const response_error = message_response.error
       const response_message = message_response.message.content.parts[0]
       const response_role = message_response.message.role
-      console.log(response_conversation_id)
+
+      if (isFirstMessage) {
+        isFirstMessage = false;
+        moderations(initialMessage, id, response_conversation_id);
+      }
 
       MESSAGES[MESSAGES.length - 1] =
       {
         "from": response_role,
         "message": response_message,
         "message_id": response_message_id,
-        "parent_message_id": id,
         "conversation_id": response_conversation_id
       }
 
@@ -523,23 +532,27 @@ async function startNewConversation(initialMessage) {
     }
   }
 
-  reader.cancel();
+  // const latestMessage = MESSAGES[MESSAGES.length -1];
+
+  // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
 
   return { response, id, parent_id };
 }
 
 async function continueConversation(message) {
   const id = generateFormattedString();
-  let parent_id = MESSAGES[MESSAGES.length - 1].parent_message_id;
+  let last_user_message = MESSAGES[MESSAGES.length - 2];
+  let last_assistant_message = MESSAGES[MESSAGES.length - 1];
+  const conversation_id = last_assistant_message.conversation_id
 
-  let body = `{"action": "next","conversation_id": "${MESSAGES[MESSAGES.length - 1].conversation_id}","messages": [{"id": "${id}","role": "user","content": {"content_type": "text","parts": ["${message}"]}}],"parent_message_id": "${parent_id}","model": "text-davinci-002-render"}`
+  let body = `{"action": "next","conversation_id": "${conversation_id}","messages": [{"id": "${id}","role": "user","content": {"content_type": "text","parts": ["${message}"]}}],"parent_message_id": "${last_assistant_message.message_id}","model": "text-davinci-002-render"}`
 
   MESSAGES.push({
     "from": "user",
     "message": message,
     "message_id": id,
-    "parent_message_id": parent_id,
-    "conversation_id": MESSAGES[MESSAGES.length - 1].conversation_id,
+    "parent_message_id": last_user_message.message_id,
+    "conversation_id": conversation_id
   });
 
   MESSAGES.push(
@@ -547,8 +560,7 @@ async function continueConversation(message) {
       "from": "assistant",
       "message": "",
       "message_id": "",
-      "parent_message_id": id,
-      "conversation_id": MESSAGES[MESSAGES.length - 1].conversation_id,
+      "conversation_id": conversation_id,
     })
     
   updateMessages();
@@ -565,11 +577,12 @@ async function continueConversation(message) {
     "method": "POST",
   })
 
-  console.log(body);
+  // moderations(message, id, MESSAGES[MESSAGES.length - 1].conversation_id);
 
   console.log(response);
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+
   while (true) {
     const { done, value } = await reader.read();
     if (done || decoder.decode(value).length === 14) {
@@ -598,8 +611,7 @@ async function continueConversation(message) {
         "from": response_role,
         "message": response_message,
         "message_id": response_message_id,
-        "parent_message_id": id,
-        "conversation_id": response_conversation_id
+        "conversation_id": conversation_id,
       }
 
       updateMessages();
@@ -614,9 +626,13 @@ async function continueConversation(message) {
     }
   }
 
+  const latestMessage = MESSAGES[MESSAGES.length -1];
+
+  // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
+
   reader.cancel();
 
-  return { response, id, parent_id };
+  return { response };
 }
 
 
