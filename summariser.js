@@ -388,45 +388,51 @@ async function continueConversation(message) {
 }
 
 function Button() {
+  const scriptTags = document.querySelectorAll('script');
+  let ytInitialData;
+  let apiKeySource;
+  let apiKey;
+
+  for (const scriptTag of scriptTags) {
+    if (scriptTag.textContent.includes('var ytInitialData = ')) {
+      ytInitialData = scriptTag;
+    } else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
+      apiKeySource = scriptTag
+    }
+  }
+
+  // Use a regular expression to parse the function
+  let regex = /ytcfg\.set\((\{.*\})\);/;
+  let match = regex.exec(apiKeySource.textContent);
+
+  // Extract the object from the match
+  const obj = JSON.parse(match[1]);
+  // Use the parsed data
+  apiKey = obj.INNERTUBE_API_KEY;
+
+  regex = /ytInitialData\s*=\s*(.+?);/;
+  match = regex.exec(ytInitialData.innerHTML);
+  ytInitialData = JSON.parse(match[1]);
+
+  const isTranscriptAvailable = ytInitialData.engagementPanels[ytInitialData.engagementPanels.length - 1].engagementPanelSectionListRenderer.content.continuationItemRenderer !== undefined
+
   const button = document.createElement("button");
   let summarizeDisabled = false;
 
-  button.innerHTML = BUTTON_TEXT
+  button.innerHTML = isTranscriptAvailable ? BUTTON_TEXT : "Not available"
   button.className = "main-toggle-button"
+
+  if (!isTranscriptAvailable){
+    return button;
+  }
+
+  const params = ytInitialData.engagementPanels[ytInitialData.engagementPanels.length - 1].engagementPanelSectionListRenderer.content.continuationItemRenderer.continuationEndpoint.getTranscriptEndpoint.params;
 
   button.addEventListener("click", async (event) => {
     const extension = document.querySelector(".summariser-extension");
     extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
 
     if (summarizeDisabled === false) {
-      const scriptTags = document.querySelectorAll('script');
-      let ytInitialData;
-      let apiKeySource;
-      let apiKey;
-
-      for (const scriptTag of scriptTags) {
-        if (scriptTag.textContent.includes('var ytInitialData = ')) {
-          ytInitialData = scriptTag;
-        } else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
-          apiKeySource = scriptTag
-        }
-      }
-      
-      // Use a regular expression to parse the function
-      let regex = /ytcfg\.set\((\{.*\})\);/;
-      let match = regex.exec(apiKeySource.textContent);
-
-      // Extract the object from the match
-      const obj = JSON.parse(match[1]);
-      // Use the parsed data
-      apiKey = obj.INNERTUBE_API_KEY;
-
-      regex = /ytInitialData\s*=\s*(.+?);/;
-      match = regex.exec(ytInitialData.innerHTML);
-      ytInitialData = JSON.parse(match[1]);
-
-      const params = ytInitialData.engagementPanels[ytInitialData.engagementPanels.length - 1].engagementPanelSectionListRenderer.content.continuationItemRenderer.continuationEndpoint?.getTranscriptEndpoint.params;
-
       const r = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
         "body": JSON.stringify({
           "context": {
