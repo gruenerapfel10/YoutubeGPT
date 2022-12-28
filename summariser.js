@@ -42,27 +42,80 @@ let MESSAGES = localStorage.getItem("summariser-extension-messages")
 
 // window.addEventListener('pageshow', function () { setTimeout(main, 5000) });
 
-function formatText(text) {
+function checkSpaces(text) {
   // Split the text into lines by the newline character
   const lines = text.split('\n');
 
-  // Create the parent element
-  const parent = document.createElement('ul');
-
-  // Loop through the lines and format them as HTML
+  // Loop through the lines
   for (let i = 0; i < lines.length; i++) {
-    // Create a new element for each line
-    const element = document.createElement('li');
+    // Find the number of spaces at the beginning of the line
+    const spaces = lines[i].match(/^ +/);
 
-    // Set the innerHTML of the element to the line
-    element.innerHTML = lines[i];
+    // If there are spaces, log the number of spaces to the console
+    if (spaces) {
+      console.log(`Line ${i + 1}: ${spaces.length} spaces`);
+    }
+  }
+}
 
-    // Append the element to the parent element
-    parent.appendChild(element);
+function formatText(text) {
+  /* Handle:
+  [] - regular blocks
+  [] - bullet points: check if sentence starts with "-"
+  [] - numbers: use regex to see if sentence starts with "{number}."
+  [] - tables: if it starts and ends with "|" then it's a table
+  */
+
+  const parent = document.createElement("div");
+  parent.style.width = "100%";
+  parent.style.whiteSpace = "pre-wrap";
+  parent.style.wordWrap = "break-word";
+  parent.innerHTML = text;
+
+  if (!text.includes("\n\n")) {
+    return parent
   }
 
-  // Return the parent element
-  return parent;
+  parent.innerHTML = "";
+
+  const blocks = text.split("\n\n");
+
+  for (let i=0; i < blocks.length; i++) {
+    let block = blocks[i];
+    let blockText = document.createElement("p");
+    blockText.innerHTML = block;
+    blockText.className = i === 0 ? "block-text-first" : "block-text";
+
+
+    if (!block.includes("\n")) { // if there is not a new line within the block it implies that it is not a list and just a regular block of text
+      parent.append(blockText)
+    } else { // else it implies that it is a list
+      const lines = block.split("\n");
+      const list = document.createElement("ul");
+      list.className = "list"
+
+      for (let j=0; j < lines.length; j++){
+        let line = lines[j].replace(/-/g, "");
+        line = line.trimStart();
+        
+        if (j === 0) {
+          const listHeading = document.createElement("p");
+          listHeading.innerHTML = line;
+          listHeading.className = i === 0 ? "block-text-first" : "block-text";
+          parent.appendChild(listHeading);
+        } else {
+          const listElement = document.createElement("li");
+          listElement.innerHTML = line;
+          listElement.className = "list-element";
+          list.appendChild(listElement);
+        }
+      }
+
+      parent.appendChild(list);
+    }
+  }
+
+  return parent
 }
 
 function newMessage(type, text) {
@@ -72,8 +125,9 @@ function newMessage(type, text) {
     const icon = Icon("user");
     message.appendChild(icon);
 
-    const h1 = formatText(text);
+    const h1 = document.createElement("h1");
     h1.className = "question";
+    h1.innerHTML = text;
     message.appendChild(h1);
 
     return message
@@ -217,7 +271,6 @@ async function startNewConversation(initialMessage) {
   const id = generateFormattedString();
   const parent_id = generateFormattedString();
 
-
   let body = {"action": "next","messages": [{"id": id,"role": "user","content": {"content_type": "text","parts": [initialMessage]}}],"parent_message_id": parent_id,"model": "text-davinci-002-render"}
 
   MESSAGES.push({
@@ -238,21 +291,16 @@ async function startNewConversation(initialMessage) {
 
   updateMessages();
 
-  console.log(JSON.stringify(body));
-
   const response = await fetch("https://chat.openai.com/backend-api/conversation", {
     "headers": {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
         "Accept": "text/event-stream",
         "Accept-Language": "en-US,en;q=0.5",
         "Content-Type": "application/json",
-        "Authorization": "Bearer ",
+        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjE5NTI0OSwiZXhwIjoxNjcyODAwMDQ5LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.X8904_hhriSsKPJ6QMTAwLtviU3_TkTwfzOR8zTtmejw1ZvWmNzVvsWeheOmHDX5-H6LCjOr_d85ApN0kAu5HMcOEs2HIEIOqy-qMUWYjGGQS5DgCFfg04rjh21rFNruqVsLqFydmGKVqXhlQuUbp24ktTkPC6xp0AIGcHpRry3EvjCc1Tk7KU7MSaYrzvO-vKX3b_3imMXTxTESFyVls1xn7JVIeAxpDm_fx9ZTK3_f_QmmJS9ZTlQfZLxl5vShGRgxHHs2CLR5rk7yfvNVBAc5Qx3hjj8YmX_5SDRGkuj4HYKAqC_wHL6qZImouv_ktu8EOn7XEKhULKmwjE8GdQ",
     },
-    "body": `${JSON.stringify(body)}`,
+    "body": JSON.stringify(body),
     "method": "POST",
-});
-
-  console.log(response);
+  });
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -281,7 +329,6 @@ async function startNewConversation(initialMessage) {
 
       if (isFirstMessage) {
         isFirstMessage = false;
-        moderations(initialMessage, id, response_conversation_id);
       }
 
       MESSAGES[MESSAGES.length - 1] =
@@ -291,8 +338,6 @@ async function startNewConversation(initialMessage) {
         "message_id": response_message_id,
         "conversation_id": response_conversation_id
       }
-
-      console.log(response_conversation_id)
 
       updateMessages();
 
@@ -306,9 +351,7 @@ async function startNewConversation(initialMessage) {
     }
   }
 
-  // const latestMessage = MESSAGES[MESSAGES.length -1];
-
-  // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
+  const latestMessage = MESSAGES[MESSAGES.length -1];
 
   return { response, id, parent_id };
 }
@@ -341,17 +384,14 @@ async function continueConversation(message) {
 
   const response = await fetch("https://chat.openai.com/backend-api/conversation", {
     "headers": {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
         "Accept": "text/event-stream",
         "Accept-Language": "en-US,en;q=0.5",
         "Content-Type": "application/json",
-        "Authorization": "Bearer ",
+        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjE5NTI0OSwiZXhwIjoxNjcyODAwMDQ5LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.X8904_hhriSsKPJ6QMTAwLtviU3_TkTwfzOR8zTtmejw1ZvWmNzVvsWeheOmHDX5-H6LCjOr_d85ApN0kAu5HMcOEs2HIEIOqy-qMUWYjGGQS5DgCFfg04rjh21rFNruqVsLqFydmGKVqXhlQuUbp24ktTkPC6xp0AIGcHpRry3EvjCc1Tk7KU7MSaYrzvO-vKX3b_3imMXTxTESFyVls1xn7JVIeAxpDm_fx9ZTK3_f_QmmJS9ZTlQfZLxl5vShGRgxHHs2CLR5rk7yfvNVBAc5Qx3hjj8YmX_5SDRGkuj4HYKAqC_wHL6qZImouv_ktu8EOn7XEKhULKmwjE8GdQ",
     },
-    "body": `${JSON.stringify(body)}`,
+    "body": JSON.stringify(body),
     "method": "POST",
-});
-
-  // moderations(message, id, MESSAGES[MESSAGES.length - 1].conversation_id);
+  });
 
   console.log(response);
   const reader = response.body.getReader();
@@ -377,8 +417,6 @@ async function continueConversation(message) {
       const response_error = message_response.error
       const response_message = message_response.message.content.parts[0]
       const response_role = message_response.message.role
-
-      console.log(response_conversation_id)
 
       MESSAGES[MESSAGES.length - 1] =
       {
@@ -488,7 +526,7 @@ function Button() {
       let start = 0;
       let count = 0;
       let isFirstMessage = true;
-      const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Use chapters and use bullet points in your summary, use your own knowledge to aid yourself in interpretation and context. Your summary needs to be detailed and accurate but concise, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points.`
+      const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Use chapters and use bullet points in your summary, use your own knowledge to aid yourself in interpretation and context. Your summary needs to be detailed and accurate but concise, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points. ALSO remember that if i use words like "video" or "transcript" i am asking about the transcript that I gave you, start your summary with "Got It." to show you understand.`
 
       while (start < transcription.length) {
         const VIDEO_NAME = document.querySelector("h1.ytd-watch-metadata > yt-formatted-string:nth-child(1)").innerText;
@@ -668,11 +706,11 @@ function getLastNonEmptyString(strings) {
 async function moderations(input, id, conversation_id) {
   await fetch("https://chat.openai.com/backend-api/moderations", {
     "headers": {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-        "Accept": "*/*",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIxMDQ3ODcsImV4cCI6MTY3MjcwOTU4NywiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.I5itUif1yHRHmCo3dNTLCu_AKEaqhtWOynSeeKxI9nIYPeDOrRphU_Qt5YFuNEy4PT9gz6uJlQdFQug8fyw7ehFfkz7o6Jl5hqhzEYjMfwz9ilrBnmSCgfMbIVTWY27OWyrxzWkW2B0Ab-cFHEp1FROvLeoxao3Y9wXbt1QD6DAJbACqr3n44NUNj1YfgQHgd4GEeIPTH_Sf0VVLOqXrJDAvGWT1hORZuMqcAcIkrx-vV8kQDZSTOyC-QRFqWhZ5HYnsJ772lShDeNUuzdlCm5FFkJkgFnNmOsjphSnxkc4AyCRs45KTarqoKUN8JduIk9z5EWLojzTX6jgupZdGGg",
+        // "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        // "Accept": "*/*",
+        // "Accept-Language": "en-US,en;q=0.5",
+        // "Content-Type": "application/json",
+        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3Bl…IjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.koqccprlQY1X8rXuJ6fEtSxzEoMfdKW5wI7dzMGu0mITvCvzMAj81Ti8iOsrALW42ZYmTsw3yCHns1BvHm-VHU7nH9Efmiu9a5U8G6QwbaHfvLbxJtqjZLBM3OrDluEvZr-nYnqRAylKVZleO_j6cfaqSfb7QUYdeWOzS025DgCd_k5-nfuFFoNyZrJ9QDJhU8CZo8DetKlL_1z-A90yArAZAB-SfBJx7WmFFbRXQ2J9oY9iYGuqox9VOuShauVAa3QdPgXi24pkojolwvbsylhg7L_9rpX1nL9HVKXMMBaMDL4d1s_fUA0C8q-JlvYEEqoxNU1uHFEhAiIupSa6fA",
     },
     "body": `{\"input\":\"${input}\",\"model\":\"text-moderation-playground\",\"conversation_id\":\"${conversation_id}\",\"message_id\":\"${id}\"}`,
     "method": "POST"
@@ -811,7 +849,6 @@ function Extension() {
   extension.appendChild(inputFormContainer);
   return extension;
 }
-
 
 /*
   
