@@ -97,7 +97,7 @@ function formatText(text) {
       for (let j=0; j < lines.length; j++){
         let line = lines[j].replace(/-/g, "");
         line = line.trimStart();
-        
+
         if (j === 0) {
           const listHeading = document.createElement("p");
           listHeading.innerHTML = line;
@@ -105,9 +105,11 @@ function formatText(text) {
           parent.appendChild(listHeading);
         } else {
           const listElement = document.createElement("li");
-          listElement.innerHTML = line;
-          listElement.className = "list-element";
-          list.appendChild(listElement);
+          if (line.trim().length !== 0) {
+            listElement.innerHTML = line;
+            listElement.className = "list-element";
+            list.appendChild(listElement);
+          }
         }
       }
 
