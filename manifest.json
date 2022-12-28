@@ -8,10 +8,10 @@
   
     "icons": {
     },
-    "permissions": [ "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*", "https://chat.openai.com/backend-api/conversation","storage", "webRequest", "webRequestBlocking", "webNavigation", "activeTab"],
+    "permissions": [ "*://*.youtube.com/*", "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*", "https://chat.openai.com/backend-api/conversation","storage", "webRequest", "webRequestBlocking", "webNavigation", "activeTab"],
     "content_scripts": [
       {
-        "matches": [ "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*"],
+        "matches": [ "*://*.youtube.com/*", "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*"],
         "js": ["summariser.js"],
         "css": ["style.css"]
       }

@@ -180,6 +180,12 @@ function findPrevParentMessageId(messageString) {
 window.requestIdleCallback(() => { setTimeout(main, 3000) });
 
 function main() {
+  const scriptElements = document.querySelectorAll('script');
+
+  scriptElements.forEach(element => {
+    element.style.display = 'none';
+  });
+  if (!window.location.toString().includes("/watch?v=")){return}
   const button_parent = document.querySelector("#above-the-fold > #title");
   button_parent.appendChild(Button());
 
@@ -298,11 +304,11 @@ async function startNewConversation(initialMessage) {
         "Accept": "text/event-stream",
         "Accept-Language": "en-US,en;q=0.5",
         "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjE5NTI0OSwiZXhwIjoxNjcyODAwMDQ5LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.X8904_hhriSsKPJ6QMTAwLtviU3_TkTwfzOR8zTtmejw1ZvWmNzVvsWeheOmHDX5-H6LCjOr_d85ApN0kAu5HMcOEs2HIEIOqy-qMUWYjGGQS5DgCFfg04rjh21rFNruqVsLqFydmGKVqXhlQuUbp24ktTkPC6xp0AIGcHpRry3EvjCc1Tk7KU7MSaYrzvO-vKX3b_3imMXTxTESFyVls1xn7JVIeAxpDm_fx9ZTK3_f_QmmJS9ZTlQfZLxl5vShGRgxHHs2CLR5rk7yfvNVBAc5Qx3hjj8YmX_5SDRGkuj4HYKAqC_wHL6qZImouv_ktu8EOn7XEKhULKmwjE8GdQ",
+        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIyMDE4MzgsImV4cCI6MTY3MjgwNjYzOCwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.HRmzlWMPRPJHQPg6m3waiV1_e4tYcbSCAw5UIHWnQFQjm9QevuVSnfItyoatvnnvDFtIaQfpzqF5ovKJ6u5hfUUD2BkNslo26rvgveWhw_8NYGDefaMJTMn5HDPUQon00PH_vtzo1FCNpuHdShunZSg83gagZKX9sxwXxTFHufL2V8Y33ICmBhuzFaI3kyeSM-kE7SPxaXSJmbRGlzMuiTWY2QUknwNXcXw5OQbVmKA2HV2Cet3gqke8DTyOAmIQvQ6GC-n3okX62cqKMFKXf_h3uEy5SU7sxz_0aIm2iDk9wuhl2bEX6PMAtQwFvVtXrM1kVWWeNnL9Ngqr_iBYew",
     },
     "body": JSON.stringify(body),
     "method": "POST",
-  });
+});
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -342,12 +348,6 @@ async function startNewConversation(initialMessage) {
       }
 
       updateMessages();
-
-      const isAtBottom = infoDiv.scrollHeight - infoDiv.scrollTop === infoDiv.clientHeight;
-
-      if (isAtBottom) {
-        infoDiv.scrollTop = infoDiv.scrollHeight;
-      }
     } catch (error) {
 
     }
@@ -389,11 +389,11 @@ async function continueConversation(message) {
         "Accept": "text/event-stream",
         "Accept-Language": "en-US,en;q=0.5",
         "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjE5NTI0OSwiZXhwIjoxNjcyODAwMDQ5LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.X8904_hhriSsKPJ6QMTAwLtviU3_TkTwfzOR8zTtmejw1ZvWmNzVvsWeheOmHDX5-H6LCjOr_d85ApN0kAu5HMcOEs2HIEIOqy-qMUWYjGGQS5DgCFfg04rjh21rFNruqVsLqFydmGKVqXhlQuUbp24ktTkPC6xp0AIGcHpRry3EvjCc1Tk7KU7MSaYrzvO-vKX3b_3imMXTxTESFyVls1xn7JVIeAxpDm_fx9ZTK3_f_QmmJS9ZTlQfZLxl5vShGRgxHHs2CLR5rk7yfvNVBAc5Qx3hjj8YmX_5SDRGkuj4HYKAqC_wHL6qZImouv_ktu8EOn7XEKhULKmwjE8GdQ",
+        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIyMDE4MzgsImV4cCI6MTY3MjgwNjYzOCwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.HRmzlWMPRPJHQPg6m3waiV1_e4tYcbSCAw5UIHWnQFQjm9QevuVSnfItyoatvnnvDFtIaQfpzqF5ovKJ6u5hfUUD2BkNslo26rvgveWhw_8NYGDefaMJTMn5HDPUQon00PH_vtzo1FCNpuHdShunZSg83gagZKX9sxwXxTFHufL2V8Y33ICmBhuzFaI3kyeSM-kE7SPxaXSJmbRGlzMuiTWY2QUknwNXcXw5OQbVmKA2HV2Cet3gqke8DTyOAmIQvQ6GC-n3okX62cqKMFKXf_h3uEy5SU7sxz_0aIm2iDk9wuhl2bEX6PMAtQwFvVtXrM1kVWWeNnL9Ngqr_iBYew",
     },
     "body": JSON.stringify(body),
     "method": "POST",
-  });
+});
 
   console.log(response);
   const reader = response.body.getReader();
@@ -429,12 +429,6 @@ async function continueConversation(message) {
       }
 
       updateMessages();
-
-      // const isAtBottom = infoDiv.scrollHeight - infoDiv.scrollTop === infoDiv.clientHeight;
-
-      // if (isAtBottom) {
-      //   infoDiv.scrollTop = infoDiv.scrollHeight;
-      // }
     } catch (error) {
 
     }
@@ -474,9 +468,13 @@ function Button() {
 
   regex = /ytInitialData\s*=\s*(.+?);/;
   match = regex.exec(ytInitialData.innerHTML);
-  ytInitialData = JSON.parse(match[1]);
 
-  const isTranscriptAvailable = ytInitialData.engagementPanels[ytInitialData.engagementPanels.length - 1].engagementPanelSectionListRenderer.content.continuationItemRenderer !== undefined
+  const startIndex = ytInitialData.innerHTML.indexOf('"getTranscriptEndpoint":{"params":"');
+  const endIndex = ytInitialData.innerHTML.indexOf('"}', startIndex);
+
+  const isTranscriptAvailable = startIndex !== 0 && endIndex !== 0;
+
+  const substring = ytInitialData.innerHTML.substring(startIndex, endIndex + 3);
 
   const button = document.createElement("button");
   let summarizeDisabled = false;
@@ -488,7 +486,7 @@ function Button() {
     return button;
   }
 
-  const params = ytInitialData.engagementPanels[ytInitialData.engagementPanels.length - 1].engagementPanelSectionListRenderer.content.continuationItemRenderer.continuationEndpoint.getTranscriptEndpoint.params;
+  const params = substring.split(':')[2].replace(/[}"\\]/g, "");
 
   button.addEventListener("click", async (event) => {
     const extension = document.querySelector(".summariser-extension");
@@ -731,6 +729,33 @@ function Extension() {
   const infoDiv = document.createElement("div");
   infoDiv.className = "info-div";
   infoDivContainer.appendChild(infoDiv);
+
+  const isAtBottom = (element) => {
+    return (
+      element.clientHeight + element.scrollTop >=
+      element.scrollHeight - (element.clientHeight/9)
+    );
+  };
+  
+  let interval = setInterval(() => {
+    if (isAtBottom(infoDiv)) {
+      infoDiv.scrollTop = infoDiv.scrollHeight;
+    }
+  }, 100);
+
+  infoDiv.addEventListener('scroll', () => {
+    if (!isAtBottom(infoDiv)) {
+      clearInterval(interval);
+      console.log('cleared');
+    } else {
+      console.log('continued');
+      interval = setInterval(() => {
+        if (isAtBottom(infoDiv)) {
+          infoDiv.scrollTop = infoDiv.scrollHeight;
+        }
+      }, 100);
+    }
+  });
 
   for (let i = 0; i < MESSAGES.length; i++) {
     const message = MESSAGES[i]
