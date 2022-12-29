@@ -60,10 +60,11 @@ function checkSpaces(text) {
 
 function formatText(text) {
   /* Handle:
-  [] - regular blocks
-  [] - bullet points: check if sentence starts with "-"
+  [X] - regular blocks
+  [X] - bullet points: check if sentence starts with "-"
   [] - numbers: use regex to see if sentence starts with "{number}."
   [] - tables: if it starts and ends with "|" then it's a table
+  [] - code
   */
 
   const parent = document.createElement("div");
@@ -72,52 +73,279 @@ function formatText(text) {
   parent.style.wordWrap = "break-word";
   parent.innerHTML = text;
 
-  if (!text.includes("\n\n")) {
+  if (!text.includes("\n")) { // one contiuous text
     return parent
   }
 
   parent.innerHTML = "";
 
-  const blocks = text.split("\n\n");
+  let arr = text.split("```");
 
-  for (let i=0; i < blocks.length; i++) {
-    let block = blocks[i];
-    let blockText = document.createElement("p");
-    blockText.innerHTML = block;
-    blockText.className = i === 0 ? "block-text-first" : "block-text";
+  console.log(arr);
+  console.log(JSON.stringify(arr,null));
+  
+  for (let i = 0; i < arr.length; i++) {
+    if (i % 2 === 0) {
+      // regular block
+      let block = arr[i];
+      let blockText = document.createElement("p");
+      blockText.className = i === 0 ? "block-text-first" : "block-text";
 
-
-    if (!block.includes("\n")) { // if there is not a new line within the block it implies that it is not a list and just a regular block of text
-      parent.append(blockText)
-    } else { // else it implies that it is a list
-      const lines = block.split("\n");
-      const list = document.createElement("ul");
-      list.className = "list"
-
-      for (let j=0; j < lines.length; j++){
-        let line = lines[j].replace(/-/g, "");
-        line = line.trimStart();
-
-        if (j === 0) {
-          const listHeading = document.createElement("p");
-          listHeading.innerHTML = line;
-          listHeading.className = i === 0 ? "block-text-first" : "block-text";
-          parent.appendChild(listHeading);
-        } else {
-          const listElement = document.createElement("li");
-          if (line.trim().length !== 0) {
-            listElement.innerHTML = line;
-            listElement.className = "list-element";
-            list.appendChild(listElement);
-          }
-        }
+      if (!block.includes("\n\n")) { // one block
+        blockText.innerHTML = block;
+        parent.appendChild(blockText);
+        continue;
       }
 
-      parent.appendChild(list);
+      const blocks = arr[i].split("\n\n");
+
+      for (let j=0; j < blocks.length; j++) {
+        block = blocks[j];
+        blockText = document.createElement("p");
+        blockText.className = j === 0 ? "block-text-first" : "block-text";
+
+        if (!block.includes("\n")) { // not a list
+          blockText.innerHTML = block;
+          parent.appendChild(blockText);
+          continue;
+        }
+
+        // is a list
+
+        blockText = document.createElement("ul");
+        blockText.className = "list";
+        const lines = block.split("\n");
+
+        for (let k=0; k < lines.length; k++) {
+          const line = lines[k];
+
+          if (k === 0) {
+            const heading = document.createElement("p");
+            heading.className = k === 0 && j === 0 ? "block-text-first" : "block-text";
+            heading.innerHTML = line;
+            parent.appendChild(heading);
+            continue;
+          }
+
+          const listElement = document.createElement("li");
+          const filteredLine = line.trim().slice(1).trim();
+          listElement.innerHTML = filteredLine;
+          listElement.className = "list-element";
+          blockText.appendChild(listElement);
+        }
+
+        parent.appendChild(blockText);
+      }
+
+      // if (!block.includes("\n")) { // it is not a list
+      //   parent.appendChild(blockText);
+      //   continue;
+      // }
+
+      // // it is a list
+      // const lines = block.split("\n");
+      // blockText = document.createElement("ul"); // redefine blockText as a ul
+
+      // for (let j=0; j < lines.length; j++) {
+      //   const line = lines[j];
+      //   if (j === 0) { // first line so should be heading
+      //     const heading = document.createElement("p");
+      //     heading.className = "block-text";
+      //     heading.innerHTML = line;
+      //     parent.appendChild(heading);
+      //     continue
+      //   }
+
+      //   // other lines so should be list elements;
+      //   const listElement = document.createElement("li");
+      //   listElement.className = "list-element";
+      //   const filteredLine = line.trim().slice(1).trim();
+      //   listElement.innerHTML = filteredLine;
+      //   blockText.appendChild(listElement);
+      // }
+
+      // parent.appendChild(blockText);
     }
+    else {
+      // code block
+      const block = arr[i];
+      const newCodeBlock = document.createElement("pre");
+      const code = document.createElement("code");
+      code.innerHTML = block;
+      newCodeBlock.appendChild(code);
+      parent.appendChild(newCodeBlock);
+    }
+    
   }
 
-  return parent
+  return parent;
+
+  // if (text.includes("\n\n") && text.includes("```")) { // both code and regular blocks are present
+  //   let arr = text.split("```");
+
+  //   console.log(arr);
+  //   console.log(JSON.stringify(arr,null));
+    
+  //   for (let i = 0; i < arr.length; i++) {
+  //     if (i % 2 === 0) {
+  //       // regular block
+  //       const block = blocks[i];
+  //       let blockText = document.createElement("p");
+  //       blockText.className = i === 0 ? "block-text-first" : "block-text";
+  
+  //       if (!block.includes("\n")) { // it is not a list
+  //         parent.appendChild(blockText);
+  //         continue;
+  //       }
+  
+  //       // it is a list
+  //       const lines = block.split("\n");
+  //       blockText = document.createElement("ul"); // redefine blockText as a ul
+  
+  //       for (let j=0; j < lines.length; j++) {
+  //         const line = lines[j];
+  //         if (j === 0) { // first line so should be heading
+  //           const heading = document.createElement("p");
+  //           heading.className = "block-text";
+  //           heading.innerHTML = line;
+  //           parent.appendChild(heading);
+  //           continue
+  //         }
+  
+  //         // other lines so should be list elements;
+  //         const listElement = document.createElement("li");
+  //         listElement.className = "list-element";
+  //         const filteredLine = line.trim().slice(1).trim();
+  //         listElement.innerHTML = filteredLine;
+  //         blockText.appendChild(listElement);
+  //       }
+  
+  //       parent.appendChild(blockText);
+  //     } else {
+  //       // code block
+  //       const block = arr[i];
+  //       const newCodeBlock = document.createElement("pre");
+  //       const code = document.createElement("code");
+  //       code.innerHTML = block;
+  //       newCodeBlock.appendChild(code);
+  //       parent.appendChild(newCodeBlock);
+  //     }
+  //   }
+    
+  //   return parent;
+  // }
+
+  // if (text.includes("\n\n") && !text.includes("```")) { // only regular blocks are present
+  //   // const blocks = text.split(/```|\n\n/);
+  //   const blocks = text.split("\n\n");
+
+  //   for (let i=0; i < blocks.length; i++) {
+  //     const block = blocks[i];
+  //     let blockText = document.createElement("p");
+  //     blockText.className = i === 0 ? "block-text-first" : "block-text";
+
+  //     if (!block.includes("\n")) { // it is not a list
+  //       parent.appendChild(blockText);
+  //       continue;
+  //     }
+
+  //     // it is a list
+  //     const lines = block.split("\n");
+  //     blockText = document.createElement("ul"); // redefine blockText as a ul
+
+  //     for (let j=0; j < lines.length; j++) {
+  //       const line = lines[j];
+  //       if (j === 0) { // first line so should be heading
+  //         const heading = document.createElement("p");
+  //         heading.className = "block-text";
+  //         heading.innerHTML = line;
+  //         parent.appendChild(heading);
+  //         continue
+  //       }
+
+  //       // other lines so should be list elements;
+  //       const listElement = document.createElement("li");
+  //       listElement.className = "list-element";
+  //       const filteredLine = line.trim().slice(1).trim();
+  //       listElement.innerHTML = filteredLine;
+  //       blockText.appendChild(listElement);
+  //     }
+
+  //     parent.appendChild(blockText);
+  //   }
+
+  //   return parent;
+  // }
+
+  // if (!text.includes("\n\n") && text.includes("```")) { // only code blocks are present
+
+  //   return parent
+  // }
+}
+
+// [
+//   "Chapter 1: Introduction\n- The video is about cleaning up React effects when using the `fetch` API.\n- The speaker wants to demonstrate how to properly clean up a `useEffect` hook when making network requests inside it, or when the component is unmounted.",
+//   "Chapter 2: Problem Demonstration\n- The speaker shows that if they quickly switch between the \"To-Do's\" panel and another panel, the network request for the \"To-Do's\" panel is still running in the background even though the component has been unmounted.\n- This can cause issues, such as the modal alert for an error still showing up even after the user has navigated away from the \"To-Do's\" panel.\n- The speaker notes that this is a common problem when using `fetch` in a `useEffect` hook and not cleaning up properly.",
+//   "Javascript Function:",
+//   "",
+//   "javascript\nfunction cancelFetch(controller) {\n  return () => {\n    controller.abort();\n  };\n}\n",
+//   "",
+//   "This function takes an instance of an `AbortController` as an argument and returns a cleanup function that can be used in a `useEffect` hook to cancel a network request. To use this function, you would pass the `AbortController` instance to the function and assign the returned function to a variable, then pass that variable as a dependency to the `useEffect` hook. When the component unmounts or the dependencies change, the cleanup function will be called and the network request will be cancelled."
+// ]
+
+// [
+//   "Chapter 1: Introduction\n- The speaker introduces the topic of properly cleaning up React effects, specifically those involving fetch requests.",
+//   "Chapter 2: Demonstration of a problem\n- The speaker provides an example of a tab component that makes a fetch request for a list of to-do items.\n- If the user quickly switches between the to-do tab and another tab, the original fetch request may still be running in the background even after the to-do tab has been unmounted.\n- This can cause issues and should be avoided by properly cleaning up the effect.",
+//   "Relevant JavaScript function:",
+//   "```\nfunction cleanupFetch() {\n  // abort the original fetch request\n}\n```"
+// ]
+
+function createBlock(text) {
+  // Handle regular blocks and lists
+  const blockText = document.createElement("p");
+  blockText.innerHTML = text;
+  blockText.className = "block-text";
+
+  if (!text.includes("\n")) {
+    // Regular block
+    return blockText;
+  } else {
+    // List
+    const lines = text.split("\n");
+    const list = document.createElement("ul");
+    list.className = "list";
+
+    for (let j = 0; j < lines.length; j++) {
+      let line = lines[j].replace(/-/g, "");
+      line = line.trimStart();
+
+      if (line.trim().length !== 0) {
+        const listElement = document.createElement("li");
+        listElement.innerHTML = line;
+        listElement.className = "list-element";
+        list.appendChild(listElement);
+      }
+    }
+
+    return list;
+  }
+}
+
+function createTextBlock(text) {
+  // Create regular block of text
+  const blockText = document.createElement("p");
+  blockText.innerHTML = text;
+  blockText.className = "block-text";
+  return blockText;
+}
+
+function createCodeBlock(code) {
+  // Create code block
+  const newCodeBlock = document.createElement("pre");
+  const codeElement = document.createElement("code");
+  newCodeBlock.appendChild(codeElement);
+  codeElement.innerHTML = code;
+  return newCodeBlock;
 }
 
 function newMessage(type, text) {
@@ -185,7 +413,7 @@ function main() {
   scriptElements.forEach(element => {
     element.style.display = 'none';
   });
-  if (!window.location.toString().includes("/watch?v=")){return}
+  if (!window.location.toString().includes("/watch?v=")) { return }
   const button_parent = document.querySelector("#above-the-fold > #title");
   button_parent.appendChild(Button());
 
@@ -279,7 +507,7 @@ async function startNewConversation(initialMessage) {
   const id = generateFormattedString();
   const parent_id = generateFormattedString();
 
-  let body = {"action": "next","messages": [{"id": id,"role": "user","content": {"content_type": "text","parts": [initialMessage]}}],"parent_message_id": parent_id,"model": "text-davinci-002-render"}
+  let body = { "action": "next", "messages": [{ "id": id, "role": "user", "content": { "content_type": "text", "parts": [initialMessage] } }], "parent_message_id": parent_id, "model": "text-davinci-002-render" }
 
   MESSAGES.push({
     "from": "user",
@@ -301,14 +529,15 @@ async function startNewConversation(initialMessage) {
 
   const response = await fetch("https://chat.openai.com/backend-api/conversation", {
     "headers": {
-        "Accept": "text/event-stream",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIyMDE4MzgsImV4cCI6MTY3MjgwNjYzOCwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.HRmzlWMPRPJHQPg6m3waiV1_e4tYcbSCAw5UIHWnQFQjm9QevuVSnfItyoatvnnvDFtIaQfpzqF5ovKJ6u5hfUUD2BkNslo26rvgveWhw_8NYGDefaMJTMn5HDPUQon00PH_vtzo1FCNpuHdShunZSg83gagZKX9sxwXxTFHufL2V8Y33ICmBhuzFaI3kyeSM-kE7SPxaXSJmbRGlzMuiTWY2QUknwNXcXw5OQbVmKA2HV2Cet3gqke8DTyOAmIQvQ6GC-n3okX62cqKMFKXf_h3uEy5SU7sxz_0aIm2iDk9wuhl2bEX6PMAtQwFvVtXrM1kVWWeNnL9Ngqr_iBYew",
+      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+      "Accept": "text/event-stream",
+      "Accept-Language": "en-US,en;q=0.5",
+      "Content-Type": "application/json",
+      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjIyNzM2NywiZXhwIjoxNjcyODMyMTY3LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.ZfZVzjLu4Ogq6ZaLYhBbUYuIDpHcGACvE0lJCwLF14sS3iGyFNivsWZ-XCO2ilGLg6glru44jz-4LH_rmdGD8IgLgDjUM1R9pNqhuiL_pD5-6nRrn1G5pLHuZ9tBE2ahc0L4m1I5EmueMkVE-RQYHk8RVKwijyJwvDlGf8pYjtLZi81Suj-s6SqIZHkoueZMpClIzpeMmsStyMzev2mR7TZgf3vFSwCv5LYCHaZzeewXt28OQYMHmPL5IOV2vCphU2gVRLJQyOuEr8SigSYYrmekHxZJXEZmQlpJhsgV8yVZLuHlUUTFjkjzpZQxZFWpm-muVtcl2qZSU_Wn1Aa5mA",
     },
     "body": JSON.stringify(body),
     "method": "POST",
-});
+  });
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -353,7 +582,7 @@ async function startNewConversation(initialMessage) {
     }
   }
 
-  const latestMessage = MESSAGES[MESSAGES.length -1];
+  const latestMessage = MESSAGES[MESSAGES.length - 1];
 
   return { response, id, parent_id };
 }
@@ -364,7 +593,7 @@ async function continueConversation(message) {
   let last_assistant_message = MESSAGES[MESSAGES.length - 1];
   const conversation_id = last_assistant_message.conversation_id
 
-  let body = {"action": "next", "conversation_id": conversation_id, "messages": [{"id": id,"role": "user","content": {"content_type": "text","parts": [message]}}],"parent_message_id": last_assistant_message.message_id,"model": "text-davinci-002-render"}
+  let body = { "action": "next", "conversation_id": conversation_id, "messages": [{ "id": id, "role": "user", "content": { "content_type": "text", "parts": [message] } }], "parent_message_id": last_assistant_message.message_id, "model": "text-davinci-002-render" }
 
   MESSAGES.push({
     "from": "user",
@@ -381,19 +610,40 @@ async function continueConversation(message) {
       "message_id": "",
       "conversation_id": conversation_id,
     })
-    
+
   updateMessages();
 
   const response = await fetch("https://chat.openai.com/backend-api/conversation", {
     "headers": {
-        "Accept": "text/event-stream",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIyMDE4MzgsImV4cCI6MTY3MjgwNjYzOCwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.HRmzlWMPRPJHQPg6m3waiV1_e4tYcbSCAw5UIHWnQFQjm9QevuVSnfItyoatvnnvDFtIaQfpzqF5ovKJ6u5hfUUD2BkNslo26rvgveWhw_8NYGDefaMJTMn5HDPUQon00PH_vtzo1FCNpuHdShunZSg83gagZKX9sxwXxTFHufL2V8Y33ICmBhuzFaI3kyeSM-kE7SPxaXSJmbRGlzMuiTWY2QUknwNXcXw5OQbVmKA2HV2Cet3gqke8DTyOAmIQvQ6GC-n3okX62cqKMFKXf_h3uEy5SU7sxz_0aIm2iDk9wuhl2bEX6PMAtQwFvVtXrM1kVWWeNnL9Ngqr_iBYew",
+      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+      "Accept": "text/event-stream",
+      "Accept-Language": "en-US,en;q=0.5",
+      "Content-Type": "application/json",
+      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjIyNzM2NywiZXhwIjoxNjcyODMyMTY3LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.ZfZVzjLu4Ogq6ZaLYhBbUYuIDpHcGACvE0lJCwLF14sS3iGyFNivsWZ-XCO2ilGLg6glru44jz-4LH_rmdGD8IgLgDjUM1R9pNqhuiL_pD5-6nRrn1G5pLHuZ9tBE2ahc0L4m1I5EmueMkVE-RQYHk8RVKwijyJwvDlGf8pYjtLZi81Suj-s6SqIZHkoueZMpClIzpeMmsStyMzev2mR7TZgf3vFSwCv5LYCHaZzeewXt28OQYMHmPL5IOV2vCphU2gVRLJQyOuEr8SigSYYrmekHxZJXEZmQlpJhsgV8yVZLuHlUUTFjkjzpZQxZFWpm-muVtcl2qZSU_Wn1Aa5mA",
     },
     "body": JSON.stringify(body),
     "method": "POST",
-});
+  });
+
+  await fetch("https://chat.openai.com/backend-api/conversation", {
+    "credentials": "include",
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+      "Accept": "text/event-stream",
+      "Accept-Language": "en-US,en;q=0.5",
+      "Content-Type": "application/json",
+      "X-OpenAI-Assistant-App-Id": "",
+      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjIyNzM2NywiZXhwIjoxNjcyODMyMTY3LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.ZfZVzjLu4Ogq6ZaLYhBbUYuIDpHcGACvE0lJCwLF14sS3iGyFNivsWZ-XCO2ilGLg6glru44jz-4LH_rmdGD8IgLgDjUM1R9pNqhuiL_pD5-6nRrn1G5pLHuZ9tBE2ahc0L4m1I5EmueMkVE-RQYHk8RVKwijyJwvDlGf8pYjtLZi81Suj-s6SqIZHkoueZMpClIzpeMmsStyMzev2mR7TZgf3vFSwCv5LYCHaZzeewXt28OQYMHmPL5IOV2vCphU2gVRLJQyOuEr8SigSYYrmekHxZJXEZmQlpJhsgV8yVZLuHlUUTFjkjzpZQxZFWpm-muVtcl2qZSU_Wn1Aa5mA",
+      "Alt-Used": "chat.openai.com",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-origin"
+    },
+    "referrer": "https://chat.openai.com/chat",
+    "body": "{\"action\":\"next\",\"messages\":[{\"id\":\"fe65333c-d17a-44d3-979b-e6b9d2242d6f\",\"role\":\"user\",\"content\":{\"content_type\":\"text\",\"parts\":[\"hi\"]}}],\"parent_message_id\":\"7595dea8-b7ac-4023-8771-68c31d2cc431\",\"model\":\"text-davinci-002-render\"}",
+    "method": "POST",
+    "mode": "cors"
+  });
 
   console.log(response);
   const reader = response.body.getReader();
@@ -434,7 +684,7 @@ async function continueConversation(message) {
     }
   }
 
-  const latestMessage = MESSAGES[MESSAGES.length -1];
+  const latestMessage = MESSAGES[MESSAGES.length - 1];
 
   // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
 
@@ -482,7 +732,7 @@ function Button() {
   button.innerHTML = isTranscriptAvailable ? BUTTON_TEXT : "Not available"
   button.className = "main-toggle-button"
 
-  if (!isTranscriptAvailable){
+  if (!isTranscriptAvailable) {
     return button;
   }
 
@@ -563,12 +813,12 @@ function Button() {
 
       chunks.push(summarisePrompt);
 
-      for (let i=0; i < chunks.length; i++) {
+      for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i]
         if (i === 0) {
           // first chunk so need to use startNewConversation function
           conversation = await startNewConversation(chunk);
-        } else{
+        } else {
           // continue the conversation
           conversation = await continueConversation(chunk);
         }
@@ -706,15 +956,15 @@ function getLastNonEmptyString(strings) {
 async function moderations(input, id, conversation_id) {
   await fetch("https://chat.openai.com/backend-api/moderations", {
     "headers": {
-        // "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-        // "Accept": "*/*",
-        // "Accept-Language": "en-US,en;q=0.5",
-        // "Content-Type": "application/json",
-        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3Bl…IjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.koqccprlQY1X8rXuJ6fEtSxzEoMfdKW5wI7dzMGu0mITvCvzMAj81Ti8iOsrALW42ZYmTsw3yCHns1BvHm-VHU7nH9Efmiu9a5U8G6QwbaHfvLbxJtqjZLBM3OrDluEvZr-nYnqRAylKVZleO_j6cfaqSfb7QUYdeWOzS025DgCd_k5-nfuFFoNyZrJ9QDJhU8CZo8DetKlL_1z-A90yArAZAB-SfBJx7WmFFbRXQ2J9oY9iYGuqox9VOuShauVAa3QdPgXi24pkojolwvbsylhg7L_9rpX1nL9HVKXMMBaMDL4d1s_fUA0C8q-JlvYEEqoxNU1uHFEhAiIupSa6fA",
+      // "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+      // "Accept": "*/*",
+      // "Accept-Language": "en-US,en;q=0.5",
+      // "Content-Type": "application/json",
+      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3Bl…IjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.koqccprlQY1X8rXuJ6fEtSxzEoMfdKW5wI7dzMGu0mITvCvzMAj81Ti8iOsrALW42ZYmTsw3yCHns1BvHm-VHU7nH9Efmiu9a5U8G6QwbaHfvLbxJtqjZLBM3OrDluEvZr-nYnqRAylKVZleO_j6cfaqSfb7QUYdeWOzS025DgCd_k5-nfuFFoNyZrJ9QDJhU8CZo8DetKlL_1z-A90yArAZAB-SfBJx7WmFFbRXQ2J9oY9iYGuqox9VOuShauVAa3QdPgXi24pkojolwvbsylhg7L_9rpX1nL9HVKXMMBaMDL4d1s_fUA0C8q-JlvYEEqoxNU1uHFEhAiIupSa6fA",
     },
     "body": `{\"input\":\"${input}\",\"model\":\"text-moderation-playground\",\"conversation_id\":\"${conversation_id}\",\"message_id\":\"${id}\"}`,
     "method": "POST"
-});
+  });
 }
 
 function Extension() {
@@ -733,10 +983,10 @@ function Extension() {
   const isAtBottom = (element) => {
     return (
       element.clientHeight + element.scrollTop >=
-      element.scrollHeight - (element.clientHeight/9)
+      element.scrollHeight - (element.clientHeight / 9)
     );
   };
-  
+
   let interval = setInterval(() => {
     if (isAtBottom(infoDiv)) {
       infoDiv.scrollTop = infoDiv.scrollHeight;
