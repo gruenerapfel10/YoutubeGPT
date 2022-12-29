@@ -100,8 +100,7 @@ body {
   width: 100%;
   box-sizing: border-box;
   resize: none;
-  padding-block: 16px;
-  padding-left: 16px;
+  padding: 16px;
   font-size: 16px;
   line-height: 1.5;
   outline: none;
@@ -110,6 +109,7 @@ body {
   color: #fff;
   max-height: 200px;
   letter-spacing: 1px;
+  transition: "height 0.2s ease-in-out";
 }
 
 .enter-button{
@@ -125,7 +125,7 @@ body {
   overflow: hidden;
   position: absolute;
   right: 10px;
-  bottom: 20px;
+  bottom: 12.5px;
 }
 
 .enter-button:hover {

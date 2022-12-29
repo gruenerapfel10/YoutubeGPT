@@ -999,12 +999,25 @@ function Extension() {
   const textarea = document.createElement("textarea");
   textarea.rows = 1;
 
-  // Auto-resize textarea on input
-  textarea.addEventListener("input", () => {
+  let timeoutId;
+
+  const debounce = (fn, delay) => {
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
+  timeoutId = setTimeout(fn, delay);
+  };
+
+  function resizeTextarea() {
     textarea.style.height = "auto";
     textarea.style.height = textarea.scrollHeight + "px";
     textarea.style.top =
       (textareaContainer.offsetHeight - textarea.offsetHeight) / 2 + "px";
+  }
+
+  // Auto-resize textarea on input
+  textarea.addEventListener("input", () => {
+    debounce(resizeTextarea, 25);  // execute resizeTextarea after 100ms of inactivity
   });
 
   function handleSubmit(event) {
