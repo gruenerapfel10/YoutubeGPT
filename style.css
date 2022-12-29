@@ -6,8 +6,8 @@
     box-sizing: border-box;
     font-family: 'Roboto', sans-serif;
     color: #fff;
-    box-sizing: border-box;
-    display: block;
+    /* box-sizing: border-box; */
+    /* display: block; */
 }
 
 .main-toggle-button {
@@ -88,33 +88,27 @@ body {
 }
 
 .textarea-container {
+  position: relative; /* needed for absolutely positioned textarea */
   background-color: #46485a;
-  display: flex;
-  align-items: center;
-  /* justify-content: center; */
   margin: 0;
   width: 100%;
-  min-height: 60px;
-  padding: 0;
   border-radius: 5px;
-  position: relative;
 }
 
-textarea {
-  background-color: transparent;
-  overflow: scroll;
-  line-height: 1.25em;
-  height: 1.25em;
+.textarea-container textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   resize: none;
+  padding-block: 16px;
+  padding-left: 16px;
+  font-size: 16px;
+  line-height: 1.5;
   outline: none;
   border: none;
-  padding: 10px;
-  padding-left: 16px;
-  width: calc(100% - 50px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
+  background-color: transparent;
+  color: #fff;
+  max-height: 200px;
   letter-spacing: 1px;
 }
 
@@ -131,7 +125,7 @@ textarea {
   overflow: hidden;
   position: absolute;
   right: 10px;
-  top: 25%;
+  bottom: 20px;
 }
 
 .enter-button:hover {
@@ -246,6 +240,32 @@ textarea {
   width: 100%;
 }
 
+.code-top {
+  background-color: #343541;
+  width: 100%;
+  height: 48px;
+  margin: 0;
+  padding: 8px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: right;
+}
+
+.copy-button {
+  width: 140px;
+  height: 100%;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+}
+
 code {
   background-color: #000;
   width: 100%;
@@ -253,4 +273,32 @@ code {
   padding: 20px;
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
+  tab-size: 10;
+  display: flex;
+  white-space: pre-wrap;
+  text-shadow: none;
+  flex-direction: column;
+}
+
+.clipboard-svg {
+  margin-right: 6px;
+  width: 22px;
+  height: 100%;
+}
+
+.tick-svg {
+  margin-right: 6px;
+  width: 22px;
+  height: 100%;
+}
+
+.copy-button > h4 {
+  font-size: 16px;
+  width: 50%;
+}
+
+.copy-button > svg {
+  margin-right: 6px;
+  width: 22px;
+  height: 100%;
 }

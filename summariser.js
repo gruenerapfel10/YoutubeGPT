@@ -1,3 +1,28 @@
+// Wait for the webpage to finish loading
+// window.onload = () => {
+  // Wait for 5 seconds
+  setTimeout(() => {
+    // Create a link element
+    const link = document.createElement('link');
+
+    // Set the rel and href attributes of the link element
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css';
+
+    // Append the link element to the head element
+    document.head.appendChild(link);
+
+    // Create a script element
+    const script = document.createElement('script');
+
+    // Set the src attribute of the script element to the CDN link for the Prism.js library
+    script.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js';
+
+    // Append the script element to the body element
+    document.body.appendChild(script);
+  }, 5000);
+// };
+
 const BUTTON_TEXT = "Summarize";
 const BUTTON_WIDTH = 100;
 const EXTENSION_HEIGHT_CINEMA = 500;
@@ -42,19 +67,73 @@ let MESSAGES = localStorage.getItem("summariser-extension-messages")
 
 // window.addEventListener('pageshow', function () { setTimeout(main, 5000) });
 
-function checkSpaces(text) {
-  // Split the text into lines by the newline character
-  const lines = text.split('\n');
+function ClipboardSvg() {
+  // Create the SVG element and append it to the span
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.className = "clipboard-svg";
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("class", "h-4 w-4");
+  svg.setAttribute("height", "1em");
+  svg.setAttribute("width", "1em");
 
-  // Loop through the lines
-  for (let i = 0; i < lines.length; i++) {
-    // Find the number of spaces at the beginning of the line
-    const spaces = lines[i].match(/^ +/);
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2");
+  svg.appendChild(path);
 
-    // If there are spaces, log the number of spaces to the console
-    if (spaces) {
-      console.log(`Line ${i + 1}: ${spaces.length} spaces`);
-    }
+  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  rect.setAttribute("x", "8");
+  rect.setAttribute("y", "2");
+  rect.setAttribute("width", "8");
+  rect.setAttribute("height", "4");
+  rect.setAttribute("rx", "1");
+  rect.setAttribute("ry", "1");
+  svg.appendChild(rect);
+  return svg;
+}
+
+function TickSvg() {
+  // Create the svg element
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.className = "tick-svg";
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("class", "h-4 w-4");
+  svg.setAttribute("height", "1em");
+  svg.setAttribute("width", "1em");
+
+  // Create the polyline element
+  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyline.setAttribute("points", "20 6 9 17 4 12");
+
+  // Append the polyline element to the svg element
+  svg.appendChild(polyline);
+  return svg;
+}
+
+async function handleCopyClick (copyTarget, copyButton) {
+  const textarea = document.createElement("textarea");
+  textarea.value = copyTarget.textContent;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+
+  if (copyButton.querySelector("h4").textContent === "Copy code") {
+    copyButton.querySelector("h4").textContent = "Copied!";
+    copyButton.replaceChild(TickSvg(), copyButton.querySelector("svg"));
+    setTimeout(async () => {
+      copyButton.querySelector("h4").textContent = "Copy code";
+      copyButton.replaceChild(ClipboardSvg(), copyButton.querySelector("svg"));
+    }, 2000);
   }
 }
 
@@ -64,7 +143,7 @@ function formatText(text) {
   [X] - bullet points: check if sentence starts with "-"
   [] - numbers: use regex to see if sentence starts with "{number}."
   [] - tables: if it starts and ends with "|" then it's a table
-  [] - code
+  [X] - code
   */
 
   const parent = document.createElement("div");
@@ -80,9 +159,6 @@ function formatText(text) {
   parent.innerHTML = "";
 
   let arr = text.split("```");
-
-  console.log(arr);
-  console.log(JSON.stringify(arr,null));
   
   for (let i = 0; i < arr.length; i++) {
     if (i % 2 === 0) {
@@ -114,7 +190,7 @@ function formatText(text) {
 
         blockText = document.createElement("ul");
         blockText.className = "list";
-        const lines = block.split("\n");
+        const lines = block.trimEnd().split("\n");
 
         for (let k=0; k < lines.length; k++) {
           const line = lines[k];
@@ -171,7 +247,35 @@ function formatText(text) {
       const block = arr[i];
       const newCodeBlock = document.createElement("pre");
       const code = document.createElement("code");
-      code.innerHTML = block;
+      code.textContent = block.trim();
+      // code.className = "language-javascript";
+      code.style.backgroundColor = "#000";
+      code.style.whiteSpace = "pre-wrap";
+
+      if (!newCodeBlock.querySelector(".code-top")) {
+        const copyBlock = document.createElement("div");
+        copyBlock.className = "code-top";
+  
+        // Create the copy button
+        const copyButton = document.createElement("button");
+        copyButton.className = "copy-button"
+  
+        copyButton.appendChild(ClipboardSvg());
+  
+        // Create the text element and append it to the span
+        const copyText = document.createElement("h4");
+        copyText.textContent = "Copy code"
+        copyButton.appendChild(copyText);
+        
+        copyButton.addEventListener("click", () => {
+          handleCopyClick(code, copyButton);
+        });
+
+        copyBlock.appendChild(copyButton);
+        newCodeBlock.appendChild(copyBlock)
+      }
+      
+      // Append the copy button to the code block
       newCodeBlock.appendChild(code);
       parent.appendChild(newCodeBlock);
     }
@@ -179,126 +283,7 @@ function formatText(text) {
   }
 
   return parent;
-
-  // if (text.includes("\n\n") && text.includes("```")) { // both code and regular blocks are present
-  //   let arr = text.split("```");
-
-  //   console.log(arr);
-  //   console.log(JSON.stringify(arr,null));
-    
-  //   for (let i = 0; i < arr.length; i++) {
-  //     if (i % 2 === 0) {
-  //       // regular block
-  //       const block = blocks[i];
-  //       let blockText = document.createElement("p");
-  //       blockText.className = i === 0 ? "block-text-first" : "block-text";
-  
-  //       if (!block.includes("\n")) { // it is not a list
-  //         parent.appendChild(blockText);
-  //         continue;
-  //       }
-  
-  //       // it is a list
-  //       const lines = block.split("\n");
-  //       blockText = document.createElement("ul"); // redefine blockText as a ul
-  
-  //       for (let j=0; j < lines.length; j++) {
-  //         const line = lines[j];
-  //         if (j === 0) { // first line so should be heading
-  //           const heading = document.createElement("p");
-  //           heading.className = "block-text";
-  //           heading.innerHTML = line;
-  //           parent.appendChild(heading);
-  //           continue
-  //         }
-  
-  //         // other lines so should be list elements;
-  //         const listElement = document.createElement("li");
-  //         listElement.className = "list-element";
-  //         const filteredLine = line.trim().slice(1).trim();
-  //         listElement.innerHTML = filteredLine;
-  //         blockText.appendChild(listElement);
-  //       }
-  
-  //       parent.appendChild(blockText);
-  //     } else {
-  //       // code block
-  //       const block = arr[i];
-  //       const newCodeBlock = document.createElement("pre");
-  //       const code = document.createElement("code");
-  //       code.innerHTML = block;
-  //       newCodeBlock.appendChild(code);
-  //       parent.appendChild(newCodeBlock);
-  //     }
-  //   }
-    
-  //   return parent;
-  // }
-
-  // if (text.includes("\n\n") && !text.includes("```")) { // only regular blocks are present
-  //   // const blocks = text.split(/```|\n\n/);
-  //   const blocks = text.split("\n\n");
-
-  //   for (let i=0; i < blocks.length; i++) {
-  //     const block = blocks[i];
-  //     let blockText = document.createElement("p");
-  //     blockText.className = i === 0 ? "block-text-first" : "block-text";
-
-  //     if (!block.includes("\n")) { // it is not a list
-  //       parent.appendChild(blockText);
-  //       continue;
-  //     }
-
-  //     // it is a list
-  //     const lines = block.split("\n");
-  //     blockText = document.createElement("ul"); // redefine blockText as a ul
-
-  //     for (let j=0; j < lines.length; j++) {
-  //       const line = lines[j];
-  //       if (j === 0) { // first line so should be heading
-  //         const heading = document.createElement("p");
-  //         heading.className = "block-text";
-  //         heading.innerHTML = line;
-  //         parent.appendChild(heading);
-  //         continue
-  //       }
-
-  //       // other lines so should be list elements;
-  //       const listElement = document.createElement("li");
-  //       listElement.className = "list-element";
-  //       const filteredLine = line.trim().slice(1).trim();
-  //       listElement.innerHTML = filteredLine;
-  //       blockText.appendChild(listElement);
-  //     }
-
-  //     parent.appendChild(blockText);
-  //   }
-
-  //   return parent;
-  // }
-
-  // if (!text.includes("\n\n") && text.includes("```")) { // only code blocks are present
-
-  //   return parent
-  // }
 }
-
-// [
-//   "Chapter 1: Introduction\n- The video is about cleaning up React effects when using the `fetch` API.\n- The speaker wants to demonstrate how to properly clean up a `useEffect` hook when making network requests inside it, or when the component is unmounted.",
-//   "Chapter 2: Problem Demonstration\n- The speaker shows that if they quickly switch between the \"To-Do's\" panel and another panel, the network request for the \"To-Do's\" panel is still running in the background even though the component has been unmounted.\n- This can cause issues, such as the modal alert for an error still showing up even after the user has navigated away from the \"To-Do's\" panel.\n- The speaker notes that this is a common problem when using `fetch` in a `useEffect` hook and not cleaning up properly.",
-//   "Javascript Function:",
-//   "",
-//   "javascript\nfunction cancelFetch(controller) {\n  return () => {\n    controller.abort();\n  };\n}\n",
-//   "",
-//   "This function takes an instance of an `AbortController` as an argument and returns a cleanup function that can be used in a `useEffect` hook to cancel a network request. To use this function, you would pass the `AbortController` instance to the function and assign the returned function to a variable, then pass that variable as a dependency to the `useEffect` hook. When the component unmounts or the dependencies change, the cleanup function will be called and the network request will be cancelled."
-// ]
-
-// [
-//   "Chapter 1: Introduction\n- The speaker introduces the topic of properly cleaning up React effects, specifically those involving fetch requests.",
-//   "Chapter 2: Demonstration of a problem\n- The speaker provides an example of a tab component that makes a fetch request for a list of to-do items.\n- If the user quickly switches between the to-do tab and another tab, the original fetch request may still be running in the background even after the to-do tab has been unmounted.\n- This can cause issues and should be avoided by properly cleaning up the effect.",
-//   "Relevant JavaScript function:",
-//   "```\nfunction cleanupFetch() {\n  // abort the original fetch request\n}\n```"
-// ]
 
 function createBlock(text) {
   // Handle regular blocks and lists
@@ -533,7 +518,7 @@ async function startNewConversation(initialMessage) {
       "Accept": "text/event-stream",
       "Accept-Language": "en-US,en;q=0.5",
       "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjIyNzM2NywiZXhwIjoxNjcyODMyMTY3LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.ZfZVzjLu4Ogq6ZaLYhBbUYuIDpHcGACvE0lJCwLF14sS3iGyFNivsWZ-XCO2ilGLg6glru44jz-4LH_rmdGD8IgLgDjUM1R9pNqhuiL_pD5-6nRrn1G5pLHuZ9tBE2ahc0L4m1I5EmueMkVE-RQYHk8RVKwijyJwvDlGf8pYjtLZi81Suj-s6SqIZHkoueZMpClIzpeMmsStyMzev2mR7TZgf3vFSwCv5LYCHaZzeewXt28OQYMHmPL5IOV2vCphU2gVRLJQyOuEr8SigSYYrmekHxZJXEZmQlpJhsgV8yVZLuHlUUTFjkjzpZQxZFWpm-muVtcl2qZSU_Wn1Aa5mA",
+      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIzNDQyNjUsImV4cCI6MTY3Mjk0OTA2NSwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.wbDC_jwqmpiUXy3QYdwrqKNqCPNgX6z_wHVqgypz7tnJyA85GzVlqVhw1n0_1O3DcPrrAG5HhOrI0Okdu-MT8TQ1IwdCWkSoziC65fd6ggeCsSRWx3kd_jKZN0g70pCJpFdmSQOtZMNlA6-XYO7Bg5AU2nFSXdlRlyR9m5z1LLgiaHU10dBX7Sws183p_HERuWEnnWb9c3X6YwufR5CZza4xjGAL5QtgCcTKlgmTgHik8yOEWiysZTtfngqoMvgyFJKAIA5pW3D1cM8ax_Rhv-TDGFuubEwqNdcqOsNnSeDdKi9utEvc2p3Zc9J-TD3XSrctNSLbHsXLC0y44WCAhg",
     },
     "body": JSON.stringify(body),
     "method": "POST",
@@ -619,30 +604,10 @@ async function continueConversation(message) {
       "Accept": "text/event-stream",
       "Accept-Language": "en-US,en;q=0.5",
       "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjIyNzM2NywiZXhwIjoxNjcyODMyMTY3LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.ZfZVzjLu4Ogq6ZaLYhBbUYuIDpHcGACvE0lJCwLF14sS3iGyFNivsWZ-XCO2ilGLg6glru44jz-4LH_rmdGD8IgLgDjUM1R9pNqhuiL_pD5-6nRrn1G5pLHuZ9tBE2ahc0L4m1I5EmueMkVE-RQYHk8RVKwijyJwvDlGf8pYjtLZi81Suj-s6SqIZHkoueZMpClIzpeMmsStyMzev2mR7TZgf3vFSwCv5LYCHaZzeewXt28OQYMHmPL5IOV2vCphU2gVRLJQyOuEr8SigSYYrmekHxZJXEZmQlpJhsgV8yVZLuHlUUTFjkjzpZQxZFWpm-muVtcl2qZSU_Wn1Aa5mA",
+      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIzNDQyNjUsImV4cCI6MTY3Mjk0OTA2NSwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.wbDC_jwqmpiUXy3QYdwrqKNqCPNgX6z_wHVqgypz7tnJyA85GzVlqVhw1n0_1O3DcPrrAG5HhOrI0Okdu-MT8TQ1IwdCWkSoziC65fd6ggeCsSRWx3kd_jKZN0g70pCJpFdmSQOtZMNlA6-XYO7Bg5AU2nFSXdlRlyR9m5z1LLgiaHU10dBX7Sws183p_HERuWEnnWb9c3X6YwufR5CZza4xjGAL5QtgCcTKlgmTgHik8yOEWiysZTtfngqoMvgyFJKAIA5pW3D1cM8ax_Rhv-TDGFuubEwqNdcqOsNnSeDdKi9utEvc2p3Zc9J-TD3XSrctNSLbHsXLC0y44WCAhg",
     },
     "body": JSON.stringify(body),
     "method": "POST",
-  });
-
-  await fetch("https://chat.openai.com/backend-api/conversation", {
-    "credentials": "include",
-    "headers": {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-      "Accept": "text/event-stream",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Content-Type": "application/json",
-      "X-OpenAI-Assistant-App-Id": "",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjIyNzM2NywiZXhwIjoxNjcyODMyMTY3LCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.ZfZVzjLu4Ogq6ZaLYhBbUYuIDpHcGACvE0lJCwLF14sS3iGyFNivsWZ-XCO2ilGLg6glru44jz-4LH_rmdGD8IgLgDjUM1R9pNqhuiL_pD5-6nRrn1G5pLHuZ9tBE2ahc0L4m1I5EmueMkVE-RQYHk8RVKwijyJwvDlGf8pYjtLZi81Suj-s6SqIZHkoueZMpClIzpeMmsStyMzev2mR7TZgf3vFSwCv5LYCHaZzeewXt28OQYMHmPL5IOV2vCphU2gVRLJQyOuEr8SigSYYrmekHxZJXEZmQlpJhsgV8yVZLuHlUUTFjkjzpZQxZFWpm-muVtcl2qZSU_Wn1Aa5mA",
-      "Alt-Used": "chat.openai.com",
-      "Sec-Fetch-Dest": "empty",
-      "Sec-Fetch-Mode": "cors",
-      "Sec-Fetch-Site": "same-origin"
-    },
-    "referrer": "https://chat.openai.com/chat",
-    "body": "{\"action\":\"next\",\"messages\":[{\"id\":\"fe65333c-d17a-44d3-979b-e6b9d2242d6f\",\"role\":\"user\",\"content\":{\"content_type\":\"text\",\"parts\":[\"hi\"]}}],\"parent_message_id\":\"7595dea8-b7ac-4023-8771-68c31d2cc431\",\"model\":\"text-davinci-002-render\"}",
-    "method": "POST",
-    "mode": "cors"
   });
 
   console.log(response);
@@ -817,10 +782,10 @@ function Button() {
         const chunk = chunks[i]
         if (i === 0) {
           // first chunk so need to use startNewConversation function
-          conversation = await startNewConversation(chunk);
+          // conversation = await startNewConversation(chunk);
         } else {
           // continue the conversation
-          conversation = await continueConversation(chunk);
+          // conversation = await continueConversation(chunk);
         }
       }
 
@@ -953,59 +918,56 @@ function getLastNonEmptyString(strings) {
   return "";
 }
 
-async function moderations(input, id, conversation_id) {
-  await fetch("https://chat.openai.com/backend-api/moderations", {
-    "headers": {
-      // "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-      // "Accept": "*/*",
-      // "Accept-Language": "en-US,en;q=0.5",
-      // "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3Bl…IjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.koqccprlQY1X8rXuJ6fEtSxzEoMfdKW5wI7dzMGu0mITvCvzMAj81Ti8iOsrALW42ZYmTsw3yCHns1BvHm-VHU7nH9Efmiu9a5U8G6QwbaHfvLbxJtqjZLBM3OrDluEvZr-nYnqRAylKVZleO_j6cfaqSfb7QUYdeWOzS025DgCd_k5-nfuFFoNyZrJ9QDJhU8CZo8DetKlL_1z-A90yArAZAB-SfBJx7WmFFbRXQ2J9oY9iYGuqox9VOuShauVAa3QdPgXi24pkojolwvbsylhg7L_9rpX1nL9HVKXMMBaMDL4d1s_fUA0C8q-JlvYEEqoxNU1uHFEhAiIupSa6fA",
-    },
-    "body": `{\"input\":\"${input}\",\"model\":\"text-moderation-playground\",\"conversation_id\":\"${conversation_id}\",\"message_id\":\"${id}\"}`,
-    "method": "POST"
-  });
-}
-
 function Extension() {
   let isLoading = false;
   let conversation_id = null;
   const extension = document.createElement("div");
   extension.className = "summariser-extension";
   extension.style.display = "none";
+  extension.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`
+  
+  window.addEventListener('resize', function() {
+    extension.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`
+  });  
 
   const infoDivContainer = document.createElement("div");
   infoDivContainer.className = "info-div-container";
   const infoDiv = document.createElement("div");
   infoDiv.className = "info-div";
   infoDivContainer.appendChild(infoDiv);
-
-  const isAtBottom = (element) => {
-    return (
-      element.clientHeight + element.scrollTop >=
-      element.scrollHeight - (element.clientHeight / 9)
-    );
-  };
-
-  let interval = setInterval(() => {
-    if (isAtBottom(infoDiv)) {
-      infoDiv.scrollTop = infoDiv.scrollHeight;
-    }
-  }, 100);
+  let isAtBottom = true;
 
   infoDiv.addEventListener('scroll', () => {
-    if (!isAtBottom(infoDiv)) {
-      clearInterval(interval);
-      console.log('cleared');
-    } else {
-      console.log('continued');
-      interval = setInterval(() => {
-        if (isAtBottom(infoDiv)) {
-          infoDiv.scrollTop = infoDiv.scrollHeight;
-        }
-      }, 100);
-    }
+    isAtBottom = infoDiv.scrollTop == infoDiv.scrollHeight - infoDiv.clientHeight;
   });
+  
+  function smoothScrollToBottom() {
+    // get the current scroll position and the distance to the bottom
+    const currentScrollPos = infoDiv.scrollTop;
+    const distanceToBottom = infoDiv.scrollHeight - infoDiv.clientHeight - currentScrollPos;
+  
+    // calculate the duration of the scroll animation based on the distance
+    const scrollDuration = Math.abs(distanceToBottom) * 0.05; // 0.1 is the scroll speed
+  
+    // scroll to the bottom using an animation
+    infoDiv.scrollTo({
+      top: infoDiv.scrollHeight - infoDiv.clientHeight,
+      behavior: 'smooth',
+    });
+  
+    // set a timeout to reset the isAtBottom flag after the animation is complete
+    setTimeout(() => {
+      isAtBottom = true;
+    }, scrollDuration);
+  }
+  
+  setInterval(() => {
+    if (isAtBottom) {
+      smoothScrollToBottom();
+    }
+  }, 100);
+  
+  
 
   for (let i = 0; i < MESSAGES.length; i++) {
     const message = MESSAGES[i]
@@ -1019,8 +981,6 @@ function Extension() {
     infoDiv.innerHTML = "";
     for (let i = 0; i < MESSAGES.length; i++) {
       const message = MESSAGES[i];
-
-      console.log(message.message);
 
       const messageDiv = newMessage(message.from, message.message);
 
@@ -1037,13 +997,15 @@ function Extension() {
   const textareaContainer = document.createElement("div");
   textareaContainer.className = "textarea-container";
   const textarea = document.createElement("textarea");
+  textarea.rows = 1;
 
+  // Auto-resize textarea on input
   textarea.addEventListener("input", () => {
     textarea.style.height = "auto";
-    textareaContainer.style.height = "auto";
-    textarea.style.height = Math.min(textarea.scrollHeight, 160) + "px";
-    textareaContainer.style.height = Math.min(textarea.scrollHeight, 160) + "px";
-  })
+    textarea.style.height = textarea.scrollHeight + "px";
+    textarea.style.top =
+      (textareaContainer.offsetHeight - textarea.offsetHeight) / 2 + "px";
+  });
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -1088,9 +1050,9 @@ function Extension() {
 
     async function fetchData() {
       if (!conversation) {
-        conversation = startNewConversation(input);
+        conversation = await startNewConversation(input);
       } else {
-        conversation = continueConversation(input);
+        conversation = await continueConversation(input);
       }
 
       isLoading = false;
@@ -1136,6 +1098,7 @@ function Extension() {
 ***REMOVED***
 ***REMOVED***
 ***REMOVED***
+  [X] - Text formatting
 
 
 ***REMOVED***
