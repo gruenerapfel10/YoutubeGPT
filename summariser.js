@@ -32,6 +32,8 @@ const SESSION_TOKEN = ""
 const chunkSize = 16000;
 const promptString = ""
 let conversation = null;
+let originalUrl = "";
+let isFirstRender = false;
 
 const specialCharacters = [
   "@",
@@ -93,27 +95,30 @@ function getVideoId(url) {
   return null;
 }
 
+let currentLocation = getVideoId(window.location.toString());
+
 browser.runtime.onMessage.addListener((message) => {
   if (message.type === "handleYouTubeChange") {
-      // if (getVideoId(window.location.toString()) !== getVideoId(message.url)) {
-      //   return;
-      // }
-      // Handle the change in YouTube
-      // MESSAGES = [];
-      // const extension = document.querySelectorAll(".summariser-extension");
-      // const button = document.querySelectorAll(".main-toggle-button");
+    if (currentLocation !== getVideoId(message.url)) {
+      const buttons = document.querySelectorAll(".main-toggle-button");
+      const extensions = document.querySelectorAll(".summariser-extension");
+    
+      for (const button of buttons) {
+        button.parentNode.removeChild(button);
+      }
+    
+      for (const extension of extensions) {
+        extension.parentNode.removeChild(extension);
+      }
 
-      // for (const element of extension) {
-      //   element.parentNode.removeChild(element);
-      // }
-
-      // for (const element of button) {
-      //   element.parentNode.removeChild(element);
-      // }
-  
-      // // window.requestIdleCallback(() => { setTimeout(main, 3000) });
-
-      // setTimeout(main, 3000);
+      setTimeout(() => {
+        if (!getVideoId(message.url)) {
+          return
+        }
+        location.reload();
+        // main();
+      }, 500)
+    }
   }
 });
 
@@ -443,6 +448,17 @@ function findPrevParentMessageId(messageString) {
 window.requestIdleCallback(() => { setTimeout(main, 3000) });
 
 function main() {
+  const buttons = document.querySelectorAll(".main-toggle-button");
+  const extensions = document.querySelectorAll(".summariser-extension");
+
+  for (const button of buttons) {
+    button.parentNode.removeChild(button);
+  }
+
+  for (const extension of extensions) {
+    extension.parentNode.removeChild(extension);
+  }
+  
   const scriptElements = document.querySelectorAll('script');
 
   scriptElements.forEach(element => {
@@ -568,7 +584,7 @@ async function startNewConversation(initialMessage) {
       "Accept": "text/event-stream",
       "Accept-Language": "en-US,en;q=0.5",
       "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjM1ODMyMCwiZXhwIjoxNjcyOTYzMTIwLCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.tbTqzXKUAX9qyYzK4LgrvrHofMaNu_fSiQF-ojLgLmTZYhZFMBQrBhj0Y6Y5ipqFD9P61bKSoxZWFZ34GUFNoqR0UUn5VqWy6b9xsVBtmkdzrCkXu6IZP1FOGTDuwwWjF6N2mxqGpznnConlbRe6woAN0Vb-Am6-hRrDQ3cOgkPjdXIWFlk-KoydQonUSt4ZE7b7Cvn60cA8vvvZK81J9BdF5-P08Yq0MXsRrf4zuCM1qoEOK19NWba0_VPlwmYICB5hT7r8JHIvjHaoNf9DNTsX59ZfdkxHtJ6k4FmoApSmsxnFe6xfX-mYRSeepXV_x-0pPT0qo2dR0B4esq_sGw",
+      "Authorization": "Bearer ",
     },
     "body": JSON.stringify(body),
     "method": "POST",
@@ -654,7 +670,7 @@ async function continueConversation(message) {
       "Accept": "text/event-stream",
       "Accept-Language": "en-US,en;q=0.5",
       "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjM1ODMyMCwiZXhwIjoxNjcyOTYzMTIwLCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.tbTqzXKUAX9qyYzK4LgrvrHofMaNu_fSiQF-ojLgLmTZYhZFMBQrBhj0Y6Y5ipqFD9P61bKSoxZWFZ34GUFNoqR0UUn5VqWy6b9xsVBtmkdzrCkXu6IZP1FOGTDuwwWjF6N2mxqGpznnConlbRe6woAN0Vb-Am6-hRrDQ3cOgkPjdXIWFlk-KoydQonUSt4ZE7b7Cvn60cA8vvvZK81J9BdF5-P08Yq0MXsRrf4zuCM1qoEOK19NWba0_VPlwmYICB5hT7r8JHIvjHaoNf9DNTsX59ZfdkxHtJ6k4FmoApSmsxnFe6xfX-mYRSeepXV_x-0pPT0qo2dR0B4esq_sGw",
+      "Authorization": "Bearer ",
     },
     "body": JSON.stringify(body),
     "method": "POST",
@@ -708,54 +724,67 @@ async function continueConversation(message) {
   return { response };
 }
 
-function Button() {
-  const scriptTags = document.querySelectorAll('script');
-  let ytInitialData;
-  let apiKeySource;
-  let apiKey;
+let apiKey;
+let params;
 
-  for (const scriptTag of scriptTags) {
-    if (scriptTag.textContent.includes('var ytInitialData = ')) {
-      ytInitialData = scriptTag;
-    } else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
-      apiKeySource = scriptTag
+function Button() {
+  // check if transcript is availabe
+  let isTranscriptAvailable = false;
+
+  let buttons = document.querySelectorAll("button, [type='button'], input[type='button']");
+  for (let i = 0; i < buttons.length; i++) {
+    let button = buttons[i];
+    if (button.getAttribute("aria-label") === "Close transcript") {
+      console.log(button);
+      isTranscriptAvailable = true;
     }
   }
-
-  // Use a regular expression to parse the function
-  let regex = /ytcfg\.set\((\{.*\})\);/;
-  let match = regex.exec(apiKeySource.textContent);
-
-  // Extract the object from the match
-  const obj = JSON.parse(match[1]);
-  // Use the parsed data
-  apiKey = obj.INNERTUBE_API_KEY;
-
-  regex = /ytInitialData\s*=\s*(.+?);/;
-  match = regex.exec(ytInitialData.innerHTML);
-
-  const startIndex = ytInitialData.innerHTML.indexOf('"getTranscriptEndpoint":{"params":"');
-  const endIndex = ytInitialData.innerHTML.indexOf('"}', startIndex);
-
-  const isTranscriptAvailable = startIndex !== 0 && endIndex !== 0;
-
-  const substring = ytInitialData.innerHTML.substring(startIndex, endIndex + 3);
-
+  
   const button = document.createElement("button");
   let summarizeDisabled = false;
 
-  button.innerHTML = isTranscriptAvailable && substring.toLowerCase().includes("gettranscriptendpoint") ? BUTTON_TEXT : "Not available"
-  button.className = "main-toggle-button"
+  button.innerHTML = isTranscriptAvailable ? BUTTON_TEXT : "Not available";
+  button.className = "main-toggle-button";
 
-  if (!isTranscriptAvailable || !substring.toLowerCase().includes("gettranscriptendpoint")) {
+  if (!isTranscriptAvailable) {
     return button;
   }
 
-  const params = substring.split(':')[2].replace(/[}"\\]/g, "");
+  // do setup if no apiKey & params & originalUrl
+  // if (isFirstRender) {
+    // first time loading so set params and original url;
+    isFirstRender = false;
+    originalUrl = "https://youtube.com/watch?v=" + getVideoId(window.location.toString()); // set original url
+    const scriptTags = document.querySelectorAll('script');
+
+    for (const scriptTag of scriptTags) {
+      if (scriptTag.textContent.includes('var ytInitialData = ')) {
+        // const regex = /ytInitialData\s*=\s*(.+?);/;
+        // match = regex.exec(scriptTag.innerHTML);
+
+        const startIndex = scriptTag.innerHTML.indexOf('"getTranscriptEndpoint":{"params":"');
+        const endIndex = scriptTag.innerHTML.indexOf('"}', startIndex);  
+        const substring = scriptTag.innerHTML.substring(startIndex, endIndex + 3);
+        console.log(endIndex);
+        console.log(startIndex);
+        console.log(substring);
+        params = substring.split(':')[2].replace(/[}"\\]/g, ""); // set params
+        console.log(substring.split(':'));
+        console.log(params);
+      } else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
+        // Use a regular expression to parse the function
+        const regex = /ytcfg\.set\((\{.*\})\);/;
+        let match = regex.exec(scriptTag.textContent);
+        apiKey = JSON.parse(match[1]).INNERTUBE_API_KEY; // set api key
+      }
+    }
+  // }
 
   button.addEventListener("click", async (event) => {
     const extension = document.querySelector(".summariser-extension");
     extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
+
+    console.log("https://youtube.com/watch?v=" + getVideoId(window.location.toString()));
 
     if (summarizeDisabled === false) {
       const r = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
@@ -774,7 +803,11 @@ function Button() {
 
       const json = await r.json();
 
-      console.log(JSON.stringify(json));
+      // console.log(JSON.stringify(json));
+
+      console.log(params)
+      console.log(originalUrl)
+      console.log("https://youtube.com/watch?v=" + getVideoId(window.location.toString()))
       
       let chunks = [];
 
@@ -837,6 +870,7 @@ function Button() {
           conversation = await startNewConversation(chunk);
         } else {
           // continue the conversation
+          await new Promise(resolve => setTimeout(resolve, 1000));
           conversation = await continueConversation(chunk);
         }
       }
@@ -990,7 +1024,7 @@ function Extension() {
   let isAtBottom = true;
 
   infoDiv.addEventListener('scroll', () => {
-    isAtBottom = infoDiv.scrollTop == infoDiv.scrollHeight - infoDiv.clientHeight;
+    isAtBottom = infoDiv.scrollTop >= (infoDiv.scrollHeight - infoDiv.clientHeight) - 40;
   });
   
   function smoothScrollToBottom() {
@@ -999,7 +1033,7 @@ function Extension() {
     const distanceToBottom = infoDiv.scrollHeight - infoDiv.clientHeight - currentScrollPos;
   
     // calculate the duration of the scroll animation based on the distance
-    const scrollDuration = Math.abs(distanceToBottom) * 0.02; // 0.1 is the scroll speed
+    const scrollDuration = Math.abs(distanceToBottom) * 0.1; // 0.1 is the scroll speed
   
     // scroll to the bottom using an animation
     infoDiv.scrollTo({
