@@ -8,6 +8,7 @@
     color: #fff;
     /* box-sizing: border-box; */
     /* display: block; */
+    scroll-behavior: smooth 50ms;
 }
 
 .main-toggle-button {
@@ -233,6 +234,12 @@ body {
   color: #fff; /* Change the color of the bullet point */
   margin-left: -20px; /* Use a negative margin to overlap the padding */
   margin-right: 10px;
+}
+
+.list-element::marker {
+  display: none;
+  content: "";
+  color: transparent;
 }
 
 .list {

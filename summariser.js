@@ -1,26 +1,26 @@
 // Wait for the webpage to finish loading
 // window.onload = () => {
   // Wait for 5 seconds
-  setTimeout(() => {
-    // Create a link element
-    const link = document.createElement('link');
+  // setTimeout(() => {
+  //   // Create a link element
+  //   const link = document.createElement('link');
 
-    // Set the rel and href attributes of the link element
-    link.rel = 'stylesheet';
-    link.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css';
+  //   // Set the rel and href attributes of the link element
+  //   link.rel = 'stylesheet';
+  //   link.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css';
 
-    // Append the link element to the head element
-    document.head.appendChild(link);
+  //   // Append the link element to the head element
+  //   document.head.appendChild(link);
 
-    // Create a script element
-    const script = document.createElement('script');
+  //   // Create a script element
+  //   const script = document.createElement('script');
 
-    // Set the src attribute of the script element to the CDN link for the Prism.js library
-    script.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js';
+  //   // Set the src attribute of the script element to the CDN link for the Prism.js library
+  //   script.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js';
 
-    // Append the script element to the body element
-    document.body.appendChild(script);
-  }, 5000);
+  //   // Append the script element to the body element
+  //   document.body.appendChild(script);
+  // }, 5000);
 // };
 
 const BUTTON_TEXT = "Summarize";
@@ -66,6 +66,56 @@ let MESSAGES = localStorage.getItem("summariser-extension-messages")
   })();
 
 // window.addEventListener('pageshow', function () { setTimeout(main, 5000) });
+
+function getVideoId(url) {
+  // Split the URL by the '?' character
+  const urlParts = url.split('?');
+  if (urlParts.length < 2) {
+    return null;
+  }
+
+  // Split the part after the '?' character by the '&' character
+  const params = urlParts[1].split('&');
+  for (const param of params) {
+    // Split the parameter by the '=' character
+    const paramParts = param.split('=');
+    if (paramParts.length < 2) {
+      continue;
+    }
+
+    // If the parameter is for the video ID, return it
+    if (paramParts[0] === 'v') {
+      return paramParts[1];
+    }
+  }
+
+  // If the video ID was not found, return null
+  return null;
+}
+
+browser.runtime.onMessage.addListener((message) => {
+  if (message.type === "handleYouTubeChange") {
+      // if (getVideoId(window.location.toString()) !== getVideoId(message.url)) {
+      //   return;
+      // }
+      // Handle the change in YouTube
+      // MESSAGES = [];
+      // const extension = document.querySelectorAll(".summariser-extension");
+      // const button = document.querySelectorAll(".main-toggle-button");
+
+      // for (const element of extension) {
+      //   element.parentNode.removeChild(element);
+      // }
+
+      // for (const element of button) {
+      //   element.parentNode.removeChild(element);
+      // }
+  
+      // // window.requestIdleCallback(() => { setTimeout(main, 3000) });
+
+      // setTimeout(main, 3000);
+  }
+});
 
 function ClipboardSvg() {
   // Create the SVG element and append it to the span
@@ -518,7 +568,7 @@ async function startNewConversation(initialMessage) {
       "Accept": "text/event-stream",
       "Accept-Language": "en-US,en;q=0.5",
       "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIzNDQyNjUsImV4cCI6MTY3Mjk0OTA2NSwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.wbDC_jwqmpiUXy3QYdwrqKNqCPNgX6z_wHVqgypz7tnJyA85GzVlqVhw1n0_1O3DcPrrAG5HhOrI0Okdu-MT8TQ1IwdCWkSoziC65fd6ggeCsSRWx3kd_jKZN0g70pCJpFdmSQOtZMNlA6-XYO7Bg5AU2nFSXdlRlyR9m5z1LLgiaHU10dBX7Sws183p_HERuWEnnWb9c3X6YwufR5CZza4xjGAL5QtgCcTKlgmTgHik8yOEWiysZTtfngqoMvgyFJKAIA5pW3D1cM8ax_Rhv-TDGFuubEwqNdcqOsNnSeDdKi9utEvc2p3Zc9J-TD3XSrctNSLbHsXLC0y44WCAhg",
+      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjM1ODMyMCwiZXhwIjoxNjcyOTYzMTIwLCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.tbTqzXKUAX9qyYzK4LgrvrHofMaNu_fSiQF-ojLgLmTZYhZFMBQrBhj0Y6Y5ipqFD9P61bKSoxZWFZ34GUFNoqR0UUn5VqWy6b9xsVBtmkdzrCkXu6IZP1FOGTDuwwWjF6N2mxqGpznnConlbRe6woAN0Vb-Am6-hRrDQ3cOgkPjdXIWFlk-KoydQonUSt4ZE7b7Cvn60cA8vvvZK81J9BdF5-P08Yq0MXsRrf4zuCM1qoEOK19NWba0_VPlwmYICB5hT7r8JHIvjHaoNf9DNTsX59ZfdkxHtJ6k4FmoApSmsxnFe6xfX-mYRSeepXV_x-0pPT0qo2dR0B4esq_sGw",
     },
     "body": JSON.stringify(body),
     "method": "POST",
@@ -604,7 +654,7 @@ async function continueConversation(message) {
       "Accept": "text/event-stream",
       "Accept-Language": "en-US,en;q=0.5",
       "Content-Type": "application/json",
-      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJyYW5kb20ucHNldWRvLm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItQ3hGblVVb1c2dEZNcjNEaW5xUURrelplIn0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJhdXRoMHw2MzhmODhhZDQzMzUzOGFhM2Q0ZTE5MjEiLCJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSIsImh0dHBzOi8vb3BlbmFpLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2NzIzNDQyNjUsImV4cCI6MTY3Mjk0OTA2NSwiYXpwIjoiVGRKSWNiZTE2V29USHROOTVueXl3aDVFNHlPbzZJdEciLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIG1vZGVsLnJlYWQgbW9kZWwucmVxdWVzdCBvcmdhbml6YXRpb24ucmVhZCBvZmZsaW5lX2FjY2VzcyJ9.wbDC_jwqmpiUXy3QYdwrqKNqCPNgX6z_wHVqgypz7tnJyA85GzVlqVhw1n0_1O3DcPrrAG5HhOrI0Okdu-MT8TQ1IwdCWkSoziC65fd6ggeCsSRWx3kd_jKZN0g70pCJpFdmSQOtZMNlA6-XYO7Bg5AU2nFSXdlRlyR9m5z1LLgiaHU10dBX7Sws183p_HERuWEnnWb9c3X6YwufR5CZza4xjGAL5QtgCcTKlgmTgHik8yOEWiysZTtfngqoMvgyFJKAIA5pW3D1cM8ax_Rhv-TDGFuubEwqNdcqOsNnSeDdKi9utEvc2p3Zc9J-TD3XSrctNSLbHsXLC0y44WCAhg",
+      "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1UaEVOVUpHTkVNMVFURTRNMEZCTWpkQ05UZzVNRFUxUlRVd1FVSkRNRU13UmtGRVFrRXpSZyJ9.eyJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiJoZW5yeS5ncmV5Lm1haWxAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImdlb2lwX2NvdW50cnkiOiJHQiJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsidXNlcl9pZCI6InVzZXItbkM2TDNtUEhScDlEVEgzSEFmSkhibHh2In0sImlzcyI6Imh0dHBzOi8vYXV0aDAub3BlbmFpLmNvbS8iLCJzdWIiOiJnb29nbGUtb2F1dGgyfDExMjE1MzE2MjA2NTQwNDg4MzE5NCIsImF1ZCI6WyJodHRwczovL2FwaS5vcGVuYWkuY29tL3YxIiwiaHR0cHM6Ly9vcGVuYWkuYXV0aDAuY29tL3VzZXJpbmZvIl0sImlhdCI6MTY3MjM1ODMyMCwiZXhwIjoxNjcyOTYzMTIwLCJhenAiOiJUZEpJY2JlMTZXb1RIdE45NW55eXdoNUU0eU9vNkl0RyIsInNjb3BlIjoib3BlbmlkIHByb2ZpbGUgZW1haWwgbW9kZWwucmVhZCBtb2RlbC5yZXF1ZXN0IG9yZ2FuaXphdGlvbi5yZWFkIG9mZmxpbmVfYWNjZXNzIn0.tbTqzXKUAX9qyYzK4LgrvrHofMaNu_fSiQF-ojLgLmTZYhZFMBQrBhj0Y6Y5ipqFD9P61bKSoxZWFZ34GUFNoqR0UUn5VqWy6b9xsVBtmkdzrCkXu6IZP1FOGTDuwwWjF6N2mxqGpznnConlbRe6woAN0Vb-Am6-hRrDQ3cOgkPjdXIWFlk-KoydQonUSt4ZE7b7Cvn60cA8vvvZK81J9BdF5-P08Yq0MXsRrf4zuCM1qoEOK19NWba0_VPlwmYICB5hT7r8JHIvjHaoNf9DNTsX59ZfdkxHtJ6k4FmoApSmsxnFe6xfX-mYRSeepXV_x-0pPT0qo2dR0B4esq_sGw",
     },
     "body": JSON.stringify(body),
     "method": "POST",
@@ -694,10 +744,10 @@ function Button() {
   const button = document.createElement("button");
   let summarizeDisabled = false;
 
-  button.innerHTML = isTranscriptAvailable ? BUTTON_TEXT : "Not available"
+  button.innerHTML = isTranscriptAvailable && substring.toLowerCase().includes("gettranscriptendpoint") ? BUTTON_TEXT : "Not available"
   button.className = "main-toggle-button"
 
-  if (!isTranscriptAvailable) {
+  if (!isTranscriptAvailable || !substring.toLowerCase().includes("gettranscriptendpoint")) {
     return button;
   }
 
@@ -723,6 +773,8 @@ function Button() {
       });
 
       const json = await r.json();
+
+      console.log(JSON.stringify(json));
 
       let chunks = [];
 
@@ -782,10 +834,10 @@ function Button() {
         const chunk = chunks[i]
         if (i === 0) {
           // first chunk so need to use startNewConversation function
-          // conversation = await startNewConversation(chunk);
+          conversation = await startNewConversation(chunk);
         } else {
           // continue the conversation
-          // conversation = await continueConversation(chunk);
+          conversation = await continueConversation(chunk);
         }
       }
 
@@ -947,7 +999,7 @@ function Extension() {
     const distanceToBottom = infoDiv.scrollHeight - infoDiv.clientHeight - currentScrollPos;
   
     // calculate the duration of the scroll animation based on the distance
-    const scrollDuration = Math.abs(distanceToBottom) * 0.05; // 0.1 is the scroll speed
+    const scrollDuration = Math.abs(distanceToBottom) * 0.02; // 0.1 is the scroll speed
   
     // scroll to the bottom using an animation
     infoDiv.scrollTo({
@@ -965,7 +1017,7 @@ function Extension() {
     if (isAtBottom) {
       smoothScrollToBottom();
     }
-  }, 100);
+  }, 50);
   
   
 
