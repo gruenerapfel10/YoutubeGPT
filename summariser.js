@@ -775,7 +775,7 @@ function Button() {
       const json = await r.json();
 
       console.log(JSON.stringify(json));
-
+      
       let chunks = [];
 
       const initialSegments =
@@ -1138,6 +1138,7 @@ function Extension() {
     if (event.key === "Enter" && isLoading === false) {
       handleSubmit(event);
       textarea.value = "";
+      resizeTextarea();
     }
   });
 
