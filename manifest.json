@@ -7,7 +7,7 @@
     "icons": {
     },
     "background": {
-      "scripts": ["prism.js", "background.js"]
+      "scripts": ["background.js"]
     },
     "permissions": [ "runtime", "tabs", "*://*.youtube.com/*", "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*", "https://chat.openai.com/backend-api/conversation","storage", "webRequest", "webRequestBlocking", "webNavigation", "activeTab", "<all_urls>", "cookies"],
     "content_scripts": [

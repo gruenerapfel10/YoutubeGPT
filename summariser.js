@@ -1,63 +1,26 @@
-// Wait for the webpage to finish loading
-// window.onload = () => {
-// Wait for 5 seconds
-// setTimeout(() => {
-//   // Create a link element
-//   const link = document.createElement('link');
-
-//   // Set the rel and href attributes of the link element
-//   link.rel = 'stylesheet';
-//   link.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css';
-
-//   // Append the link element to the head element
-//   document.head.appendChild(link);
-
-//   // Create a script element
-//   const script = document.createElement('script');
-
-//   // Set the src attribute of the script element to the CDN link for the Prism.js library
-//   script.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js';
-
-//   // Append the script element to the body element
-//   document.body.appendChild(script);
-// }, 5000);
-// };
-
 const BUTTON_TEXT = "Summarize";
 const BUTTON_WIDTH = 100;
 const EXTENSION_HEIGHT_CINEMA = 500;
 const EXTENSION_WIDTH_CINEMA = 500;
-let ACCESS_TOKEN = localStorage.getItem("summariser-extension-access-token") || "Bearer none"
-const chunkSize = 16000;
-const promptString = ""
-let conversation = null;
+let ACCESS_TOKEN = localStorage.getItem("summariser-extension-access-token") || "Bearer none" // if none then when user clicks the summarize button it will get it for them
+const CHUNK_SIZE = 16000; // messages are split into chunks in order to fit the full transcript to ChatGPT
+let conversation = null; // ChatGPT conversation, if null then need to start one else continue existing conversation
 let originalUrl = "";
 let isFirstRender = false;
 let status = "ok";
 
+// this prompt is sent to ChatGPT to intialise the summary after all of the transcript parts have been given
+const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Think really hard and carefully about the transcript when asked questions about it consider every single word , use your own knowledge to aid yourself in interpretation and context. Your summary needs to be exhaustive and detailed, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points. ALSO remember that if i use words like "video" or "transcript" i am asking about the transcript that I gave you, start your summary with "Got It." to show you understand.`
+
+// top 40 words in a text are assigned a special character to create a dictionary which ChatGPT will use to decode messages, this allows for more characters to be put in a single message
 const specialCharacters = [
-  "@",
-  "#",
-  "$",
-  "%",
-  "^",
-  "&",
-  "*",
-  "(",
-  ")",
-  "{",
-  "}",
-  "[",
-  "]",
-  "|",
-  "\\",
-  "/",
-  "+",
-  "-",
-  "_",
-  "~"
+  'Ä', 'Ö', 'Ü', 'Æ', 'Ø', 'Å', 'ß', 'Œ', 'œ', 'ß', 'Ǟ', 'ǟ', 'Ǻ', 'ǻ',
+  'Ⱥ', 'ɑ', 'ǝ', 'ə', 'ʌ', 'ɛ', 'ɜ', 'ɪ', 'ʊ', 'ʃ', 'ʒ', 'θ', 'ð', 'ŋ',
+  'ʔ', 'ɾ', 'ɹ', 'ʁ', 'ʕ', 'ʢ', 'ʡ', 'ʔ', 'ʡ', 'ʔ', 'ʔ', 'ʔ'
 ];
 
+// currently messages do not save but will later so its equivalent to an empty array
+// === let MESSAGES = []
 let MESSAGES = localStorage.getItem("summariser-extension-messages")
   ? JSON.parse(localStorage.getItem("summariser-extension-messages"))
   : (() => {
@@ -67,40 +30,40 @@ let MESSAGES = localStorage.getItem("summariser-extension-messages")
     return JSON.parse(localStorage.getItem("summariser-extension-messages"));
   })();
 
-// window.addEventListener('pageshow', function () { setTimeout(main, 5000) });
-
+// gets the video watch id from the url
 function getVideoId(url) {
-  // Split the URL by the '?' character
   const urlParts = url.split('?');
   if (urlParts.length < 2) {
     return null;
   }
 
-  // Split the part after the '?' character by the '&' character
+  // split the part after the '?' character by the '&' character
   const params = urlParts[1].split('&');
   for (const param of params) {
-    // Split the parameter by the '=' character
+    // split the parameter by the '=' character
     const paramParts = param.split('=');
     if (paramParts.length < 2) {
       continue;
     }
 
-    // If the parameter is for the video ID, return it
+    // if the parameter is for the video id, return it
     if (paramParts[0] === 'v') {
       return paramParts[1];
     }
   }
 
-  // If the video ID was not found, return null
+  // if the video id was not found, return null
   return null;
 }
 
+// get intial location
 let currentLocation = getVideoId(window.location.toString());
 
+// message received whenever a user in the active tab changes to another youtube domain page
 browser.runtime.onMessage.addListener((message) => {
   if (message.type === "handleYouTubeChange") {
     if (currentLocation !== getVideoId(message.url)) {
-      const buttons = document.querySelectorAll(".main-toggle-button");
+      const buttons = document.querySelectorAll(".summary-toggle-button");
       const extensions = document.querySelectorAll(".summariser-extension");
 
       for (const button of buttons) {
@@ -115,842 +78,13 @@ browser.runtime.onMessage.addListener((message) => {
         if (!getVideoId(message.url)) {
           return
         }
-        location.reload();
-        // main();
+        location.reload(); // reload to initialize the data for the new youtube video, only way for now
       }, 500)
     }
   }
 });
 
-function ClipboardSvg() {
-  // Create the SVG element and append it to the span
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.className = "clipboard-svg";
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("class", "h-4 w-4");
-  svg.setAttribute("height", "1em");
-  svg.setAttribute("width", "1em");
-
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2");
-  svg.appendChild(path);
-
-  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-  rect.setAttribute("x", "8");
-  rect.setAttribute("y", "2");
-  rect.setAttribute("width", "8");
-  rect.setAttribute("height", "4");
-  rect.setAttribute("rx", "1");
-  rect.setAttribute("ry", "1");
-  svg.appendChild(rect);
-  return svg;
-}
-
-function TickSvg() {
-  // Create the svg element
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.className = "tick-svg";
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke-width", "2");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("stroke-linecap", "round");
-  svg.setAttribute("stroke-linejoin", "round");
-  svg.setAttribute("class", "h-4 w-4");
-  svg.setAttribute("height", "1em");
-  svg.setAttribute("width", "1em");
-
-  // Create the polyline element
-  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyline.setAttribute("points", "20 6 9 17 4 12");
-
-  // Append the polyline element to the svg element
-  svg.appendChild(polyline);
-  return svg;
-}
-
-async function handleCopyClick(copyTarget, copyButton) {
-  const textarea = document.createElement("textarea");
-  textarea.value = copyTarget.textContent;
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textarea);
-
-  if (copyButton.querySelector("h4").textContent === "Copy code") {
-    copyButton.querySelector("h4").textContent = "Copied!";
-    copyButton.replaceChild(TickSvg(), copyButton.querySelector("svg"));
-    setTimeout(async () => {
-      copyButton.querySelector("h4").textContent = "Copy code";
-      copyButton.replaceChild(ClipboardSvg(), copyButton.querySelector("svg"));
-    }, 2000);
-  }
-}
-
-function formatText(text) {
-  /* Handle:
-  [X] - regular blocks
-  [X] - bullet points: check if sentence starts with "-"
-  [] - numbers: use regex to see if sentence starts with "{number}."
-  [] - tables: if it starts and ends with "|" then it's a table
-  [X] - code
-  */
-
-  const parent = document.createElement("div");
-  parent.style.width = "100%";
-  parent.style.whiteSpace = "pre-wrap";
-  parent.style.wordWrap = "break-word";
-  parent.innerHTML = text;
-
-  if (!text.includes("\n")) { // one contiuous text
-    return parent
-  }
-
-  parent.innerHTML = "";
-
-  let arr = text.split("```");
-
-  for (let i = 0; i < arr.length; i++) {
-    if (i % 2 === 0) {
-      // regular block
-      let block = arr[i];
-      let blockText = document.createElement("p");
-      blockText.className = i === 0 ? "block-text-first" : "block-text";
-
-      if (!block.includes("\n\n")) { // one block
-        blockText.innerHTML = block;
-        parent.appendChild(blockText);
-        continue;
-      }
-
-      const blocks = arr[i].split("\n\n");
-
-      for (let j = 0; j < blocks.length; j++) {
-        block = blocks[j];
-        blockText = document.createElement("p");
-        blockText.className = j === 0 ? "block-text-first" : "block-text";
-
-        if (!block.includes("\n")) { // not a list
-          blockText.innerHTML = block;
-          parent.appendChild(blockText);
-          continue;
-        }
-
-        // is a list
-
-        blockText = document.createElement("ul");
-        blockText.className = "list";
-        const lines = block.trimEnd().split("\n");
-
-        for (let k = 0; k < lines.length; k++) {
-          const line = lines[k];
-
-          if (k === 0) {
-            const heading = document.createElement("p");
-            heading.className = k === 0 && j === 0 ? "block-text-first" : "block-text";
-            heading.innerHTML = line;
-            parent.appendChild(heading);
-            continue;
-          }
-
-          const listElement = document.createElement("li");
-          const filteredLine = line.trim().slice(1).trim();
-          listElement.innerHTML = filteredLine;
-          listElement.className = "list-element";
-          blockText.appendChild(listElement);
-        }
-
-        parent.appendChild(blockText);
-      }
-
-      // if (!block.includes("\n")) { // it is not a list
-      //   parent.appendChild(blockText);
-      //   continue;
-      // }
-
-      // // it is a list
-      // const lines = block.split("\n");
-      // blockText = document.createElement("ul"); // redefine blockText as a ul
-
-      // for (let j=0; j < lines.length; j++) {
-      //   const line = lines[j];
-      //   if (j === 0) { // first line so should be heading
-      //     const heading = document.createElement("p");
-      //     heading.className = "block-text";
-      //     heading.innerHTML = line;
-      //     parent.appendChild(heading);
-      //     continue
-      //   }
-
-      //   // other lines so should be list elements;
-      //   const listElement = document.createElement("li");
-      //   listElement.className = "list-element";
-      //   const filteredLine = line.trim().slice(1).trim();
-      //   listElement.innerHTML = filteredLine;
-      //   blockText.appendChild(listElement);
-      // }
-
-      // parent.appendChild(blockText);
-    }
-    else {
-      // code block
-      const block = arr[i];
-      const newCodeBlock = document.createElement("pre");
-      const code = document.createElement("code");
-      code.textContent = block.trim();
-      // code.className = "language-javascript";
-      code.style.backgroundColor = "#000";
-      code.style.whiteSpace = "pre-wrap";
-
-      if (!newCodeBlock.querySelector(".code-top")) {
-        const copyBlock = document.createElement("div");
-        copyBlock.className = "code-top";
-
-        // Create the copy button
-        const copyButton = document.createElement("button");
-        copyButton.className = "copy-button"
-
-        copyButton.appendChild(ClipboardSvg());
-
-        // Create the text element and append it to the span
-        const copyText = document.createElement("h4");
-        copyText.textContent = "Copy code"
-        copyButton.appendChild(copyText);
-
-        copyButton.addEventListener("click", () => {
-          handleCopyClick(code, copyButton);
-        });
-
-        copyBlock.appendChild(copyButton);
-        newCodeBlock.appendChild(copyBlock)
-      }
-
-      // Append the copy button to the code block
-      newCodeBlock.appendChild(code);
-      parent.appendChild(newCodeBlock);
-    }
-
-  }
-
-  return parent;
-}
-
-function createBlock(text) {
-  // Handle regular blocks and lists
-  const blockText = document.createElement("p");
-  blockText.innerHTML = text;
-  blockText.className = "block-text";
-
-  if (!text.includes("\n")) {
-    // Regular block
-    return blockText;
-  } else {
-    // List
-    const lines = text.split("\n");
-    const list = document.createElement("ul");
-    list.className = "list";
-
-    for (let j = 0; j < lines.length; j++) {
-      let line = lines[j].replace(/-/g, "");
-      line = line.trimStart();
-
-      if (line.trim().length !== 0) {
-        const listElement = document.createElement("li");
-        listElement.innerHTML = line;
-        listElement.className = "list-element";
-        list.appendChild(listElement);
-      }
-    }
-
-    return list;
-  }
-}
-
-function createTextBlock(text) {
-  // Create regular block of text
-  const blockText = document.createElement("p");
-  blockText.innerHTML = text;
-  blockText.className = "block-text";
-  return blockText;
-}
-
-function createCodeBlock(code) {
-  // Create code block
-  const newCodeBlock = document.createElement("pre");
-  const codeElement = document.createElement("code");
-  newCodeBlock.appendChild(codeElement);
-  codeElement.innerHTML = code;
-  return newCodeBlock;
-}
-
-function newMessage(type, text) {
-  if (type === "user") {
-    const message = document.createElement("div");
-    message.className = "user-message";
-    const icon = Icon("user");
-    message.appendChild(icon);
-
-    const h1 = document.createElement("h1");
-    h1.className = "question";
-    h1.innerHTML = text;
-    message.appendChild(h1);
-
-    return message
-  }
-
-  const message = document.createElement("div");
-  message.className = "assistant-message"
-  const icon = Icon("assistant")
-  message.appendChild(icon);
-
-  const h1 = formatText(text);
-  h1.className = "question";
-  message.appendChild(h1);
-
-  // document.querySelector(".info-div").scrollTop = document.querySelector(".info-div").scrollHeight - document.querySelector(".info-div").clientHeight;
-  return message
-}
-
-function updateMessages() {
-  const infoDiv = document.querySelector(".info-div");
-  infoDiv.innerHTML = "";
-  for (let i = 0; i < MESSAGES.length; i++) {
-    const message = MESSAGES[i]
-
-    const messageDiv = newMessage(message.from, message.message);
-    infoDiv.appendChild(messageDiv);
-  }
-}
-
-
-function findPrevParentMessageId(messageString) {
-  // Find the index of the message with the inputted message string
-  const messageIndex = MESSAGES.findIndex(message => message.message === messageString);
-
-  // If the message was not found, return null
-  if (messageIndex === -1) {
-    return null;
-  }
-
-  // If the message is the first in the list, return null
-  if (messageIndex === 0) {
-    return null;
-  }
-
-  // Otherwise, return the parent message ID of the previous message
-  return MESSAGES[messageIndex - 1].parent_message_id;
-}
-
-window.requestIdleCallback(() => { setTimeout(main, 3000) });
-
-function main() {
-  const buttons = document.querySelectorAll(".main-toggle-button");
-  const extensions = document.querySelectorAll(".summariser-extension");
-
-  for (const button of buttons) {
-    button.parentNode.removeChild(button);
-  }
-
-  for (const extension of extensions) {
-    extension.parentNode.removeChild(extension);
-  }
-
-  const scriptElements = document.querySelectorAll('script');
-
-  scriptElements.forEach(element => {
-    element.style.display = 'none';
-  });
-  if (!window.location.toString().includes("/watch?v=")) { return }
-  const button_parent = document.querySelector("#above-the-fold > #title");
-  button_parent.appendChild(Button());
-
-  const extension_parent = document.getElementById("secondary-inner");
-  extension_parent.appendChild(Extension());
-
-  // youtube's elements style adjustments:
-  button_parent.style.display = "flex";
-  button_parent.style.alignItems = "top";
-
-  const title = document.querySelector("h1.ytd-watch-metadata");
-  title.style.width = `calc(100% - ${BUTTON_WIDTH}px)`;
-}
-
-function findCommonWords(text) {
-  // Create an array of all the words in the text
-  const mostAreaWords = findMostAreaWords(text);
-
-  // Create a table of the 20 most common words
-  const commonWords = [];
-  let key = "@";
-  let specialCharactersCopy = specialCharacters.slice();
-  for (let i = 0; i < mostAreaWords.length; i++) {
-    const word = mostAreaWords[i];
-    const randomIndex = Math.floor(
-      Math.random() * specialCharactersCopy.length
-    );
-    key = specialCharactersCopy[randomIndex];
-    commonWords.push({ word: word.word, key });
-    specialCharactersCopy.splice(randomIndex, 1); // remove the character from the array
-    if (commonWords.length === 20) break;
-  }
-
-  return commonWords;
-}
-
-function replaceWords(text) {
-  let modifiedText = text;
-  const commonWords = findCommonWords(text);
-  let commonWordsString = "";
-
-  commonWords.forEach((word) => {
-    commonWordsString += `${word.word}=${word.key} `;
-  });
-
-  commonWordsString.trimEnd();
-
-  commonWords.forEach((commonWord) => {
-    modifiedText = modifiedText.replace(
-      new RegExp(`\\b${commonWord.word}\\b`, "gi"),
-      commonWord.key
-    );
-  });
-  return { modifiedText, commonWordsString };
-}
-
-function findMostAreaWords(text) {
-  // Split the text into an array of words
-  const words = text.split(" ");
-
-  // Create an empty array to store the results
-  const results = [];
-
-  // Iterate over the array of words
-  for (const word of words) {
-    // Check if the word has already been added to the results array
-    const existingResult = results.find((result) => result.word === word);
-    if (existingResult) {
-      // If the word has already been added, increment the frequency count
-      existingResult.frequency++;
-    } else {
-      // If the word has not been added, add a new object to the results array
-      results.push({
-        word: word,
-        length: word.length,
-        frequency: 1
-      });
-    }
-  }
-
-  // Sort the results array in descending order by frequency * length (area)
-  results.sort((a, b) => b.frequency * b.length - a.frequency * a.length);
-
-  // Return the results array
-  return results;
-}
-
-const escapeString = str => str.replace(/[\\"\[\]]/g, "\\$&");
-
-async function startNewConversation(initialMessage) {
-  const id = generateFormattedString();
-  const parent_id = generateFormattedString();
-
-  let body = { "action": "next", "messages": [{ "id": id, "role": "user", "content": { "content_type": "text", "parts": [initialMessage] } }], "parent_message_id": parent_id, "model": "text-davinci-002-render" }
-
-  console.log(initialMessage);
-
-  MESSAGES.push({
-    "from": "user",
-    "message": initialMessage,
-    "message_id": id,
-    "parent_message_id": parent_id,
-    "conversation_id": null,
-  })
-
-  MESSAGES.push(
-    {
-      "from": "assistant",
-      "message": "",
-      "message_id": "",
-      "conversation_id": "",
-    })
-
-  updateMessages();
-
-  const response = await fetch("https://chat.openai.com/backend-api/conversation", {
-    "headers": {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-      "Accept": "text/event-stream",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Content-Type": "application/json",
-      "Authorization": ACCESS_TOKEN,
-    },
-    "body": JSON.stringify(body),
-    "method": "POST",
-  });
-
-  console.log(response);
-
-  if (await response.ok === false) {
-    return response
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let isFirstMessage = true;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done || decoder.decode(value).length === 14) {
-      break;
-    }
-
-    let string = decoder.decode(value).toString();
-    let lines = string.split("\n\n");
-    let data = getLastNonEmptyString(lines);
-    let filtered = data.replace(/data: [DONE]: /g, "");
-    filtered = filtered.replace(/data: /g, "");
-
-    try {
-      const message_response = JSON.parse(filtered);
-
-      const response_message_id = message_response.message.id;
-      const response_conversation_id = message_response.conversation_id;
-      const response_error = message_response.error
-      const response_message = message_response.message.content.parts[0]
-      const response_role = message_response.message.role
-
-      if (isFirstMessage) {
-        isFirstMessage = false;
-      }
-
-      MESSAGES[MESSAGES.length - 1] =
-      {
-        "from": response_role,
-        "message": response_message,
-        "message_id": response_message_id,
-        "conversation_id": response_conversation_id
-      }
-
-      updateMessages();
-    } catch (error) {
-
-    }
-  }
-
-  const latestMessage = MESSAGES[MESSAGES.length - 1];
-
-  return { response, id, parent_id };
-}
-
-async function continueConversation(message) {
-  const id = generateFormattedString();
-  let last_user_message = MESSAGES[MESSAGES.length - 2];
-  let last_assistant_message = MESSAGES[MESSAGES.length - 1];
-  const conversation_id = last_assistant_message.conversation_id
-
-  let body = { "action": "next", "conversation_id": conversation_id, "messages": [{ "id": id, "role": "user", "content": { "content_type": "text", "parts": [message] } }], "parent_message_id": last_assistant_message.message_id, "model": "text-davinci-002-render" }
-
-  MESSAGES.push({
-    "from": "user",
-    "message": message,
-    "message_id": id,
-    "parent_message_id": last_user_message.message_id,
-    "conversation_id": conversation_id
-  });
-
-  MESSAGES.push(
-    {
-      "from": "assistant",
-      "message": "",
-      "message_id": "",
-      "conversation_id": conversation_id,
-    })
-
-  updateMessages();
-
-  const response = await fetch("https://chat.openai.com/backend-api/conversation", {
-    "headers": {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-      "Accept": "text/event-stream",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Content-Type": "application/json",
-      "Authorization": ACCESS_TOKEN,
-    },
-    "body": JSON.stringify(body),
-    "method": "POST",
-  });
-
-  console.log(response);
-
-  if (await response.ok === false) {
-    return response
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done || decoder.decode(value).length === 14) {
-      break;
-    }
-
-    let string = decoder.decode(value).toString();
-    let lines = string.split("\n\n");
-    let data = getLastNonEmptyString(lines);
-    let filtered = data.replace(/data: [DONE]: /g, "");
-    filtered = filtered.replace(/data: /g, "");
-
-    try {
-      const message_response = JSON.parse(filtered);
-
-      const response_message_id = message_response.message.id;
-      const response_conversation_id = message_response.conversation_id;
-      const response_error = message_response.error
-      const response_message = message_response.message.content.parts[0]
-      const response_role = message_response.message.role
-
-      MESSAGES[MESSAGES.length - 1] =
-      {
-        "from": response_role,
-        "message": response_message,
-        "message_id": response_message_id,
-        "conversation_id": conversation_id,
-      }
-
-      updateMessages();
-    } catch (error) {
-
-    }
-  }
-
-  const latestMessage = MESSAGES[MESSAGES.length - 1];
-
-  // moderations(latestMessage.message, latestMessage.message_id, latestMessage.conversation_id);
-
-  // reader.cancel();
-
-  return { response };
-}
-
-function handleError(statusText) {
-  status = statusText;
-  console.log(status);
-
-  const multiUtilButton = document.querySelector("[class^='multi-util']");
-
-  if (status === "Forbidden") {
-    // Cloudflare
-    multiUtilButton.className = "multi-util-cloudflare";
-    multiUtilButton.textContent = "Cloudflare check. Click to verify & retry.";
-  } else if (status === "Unauthorized") {
-    // Expired Auth
-    multiUtilButton.className = "multi-util-oauth"
-    multiUtilButton.textContent = "OAuth Expired. Click to refresh oauth & retry.";
-  } else if (status === "Too Many Requests") {
-    // ChatGPT cooldown
-    multiUtilButton.className = "multi-util-cooldown"
-    multiUtilButton.textContent = "Cooldown. ChatGPT has rate limited you. Switch Account or wait 1 hour.";
-    multiUtilButton.disabled = true;
-  }
-}
-
-async function handleChunks(chunks) {
-  function retryListener() {
-    const listener = (request, sender, sendResponse) => {
-      if (request.type === "retry") {
-        handleChunks(chunks);
-        browser.runtime.onMessage.removeListener(listener);
-      }
-    }
-    browser.runtime.onMessage.addListener(listener);
-  }
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i]
-    if (i === 0) {
-      // first chunk so need to use startNewConversation function
-      conversation = await startNewConversation(chunk);
-
-      handleError(await conversation.statusText);
-      
-      if (await conversation.ok === false) {
-        retryListener(chunks);
-        console.log("retried");
-      } else {
-        
-      }
-    } else {
-      // continue the conversation
-      // await new Promise(resolve => setTimeout(resolve, 1000));
-      conversation = await continueConversation(chunk);
-      
-      handleError(await conversation.statusText);
-      
-      if (await conversation.ok === false) {
-        retryListener(chunks);
-        console.log("retried");
-      } else {
-        
-      }
-    }
-  }
-}
-
-let apiKey;
-let params;
-
-function Button() {
-  // check if transcript is availabe
-  let isTranscriptAvailable = false;
-
-  let buttons = document.querySelectorAll("button, [type='button'], input[type='button']");
-  for (let i = 0; i < buttons.length; i++) {
-    let button = buttons[i];
-    if (button.getAttribute("aria-label") === "Close transcript") {
-      console.log(button);
-      isTranscriptAvailable = true;
-    }
-  }
-
-  const button = document.createElement("button");
-  let summarizeDisabled = false;
-
-  button.innerHTML = isTranscriptAvailable ? BUTTON_TEXT : "Not available";
-  button.className = "main-toggle-button";
-
-  if (!isTranscriptAvailable) {
-    return button;
-  }
-
-  // do setup if no apiKey & params & originalUrl
-  // if (isFirstRender) {
-  // first time loading so set params and original url;
-  isFirstRender = false;
-  originalUrl = "https://youtube.com/watch?v=" + getVideoId(window.location.toString()); // set original url
-  const scriptTags = document.querySelectorAll('script');
-
-  for (const scriptTag of scriptTags) {
-    if (scriptTag.textContent.includes('var ytInitialData = ')) {
-      // const regex = /ytInitialData\s*=\s*(.+?);/;
-      // match = regex.exec(scriptTag.innerHTML);
-
-      const startIndex = scriptTag.innerHTML.indexOf('"getTranscriptEndpoint":{"params":"');
-      const endIndex = scriptTag.innerHTML.indexOf('"}', startIndex);
-      const substring = scriptTag.innerHTML.substring(startIndex, endIndex + 3);
-      console.log(endIndex);
-      console.log(startIndex);
-      console.log(substring);
-      params = substring.split(':')[2].replace(/[}"\\]/g, ""); // set params
-      console.log(substring.split(':'));
-      console.log(params);
-    } else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
-      // Use a regular expression to parse the function
-      const regex = /ytcfg\.set\((\{.*\})\);/;
-      let match = regex.exec(scriptTag.textContent);
-      apiKey = JSON.parse(match[1]).INNERTUBE_API_KEY; // set api key
-    }
-  }
-  // }
-
-  button.addEventListener("click", async (event) => {
-    const extension = document.querySelector(".summariser-extension");
-    extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
-
-    console.log("https://youtube.com/watch?v=" + getVideoId(window.location.toString()));
-
-    if (summarizeDisabled === false) {
-      const r = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
-        "body": JSON.stringify({
-          "context": {
-            "client": {
-              "clientName": "WEB",
-              "clientVersion": "2.20221220.09.00",
-              "utcOffsetMinutes": 0,
-            }
-          },
-          "params": params
-        }),
-        "method": "POST"
-      });
-
-      const json = await r.json();
-
-      // console.log(JSON.stringify(json));
-
-      console.log(params)
-      console.log(originalUrl)
-      console.log("https://youtube.com/watch?v=" + getVideoId(window.location.toString()))
-
-      let chunks = [];
-
-      const initialSegments =
-        json.actions[0].updateEngagementPanelAction.content.transcriptRenderer
-          .content.transcriptSearchPanelRenderer.body.transcriptSegmentListRenderer
-          .initialSegments;
-
-      let transcription = "";
-
-      for (let segment of initialSegments) {
-        transcription +=
-          segment.transcriptSegmentRenderer.snippet.runs[0].text + " ";
-      }
-
-      let start = 0;
-      let count = 0;
-      let isFirstMessage = true;
-      const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Think really hard and carefully about the transcript when asked questions about it consider every single word , use your own knowledge to aid yourself in interpretation and context. Your summary needs to be exhaustive and detailed, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points. ALSO remember that if i use words like "video" or "transcript" i am asking about the transcript that I gave you, start your summary with "Got It." to show you understand.`
-
-      while (start < transcription.length) {
-        const VIDEO_NAME = document.querySelector("h1.ytd-watch-metadata > yt-formatted-string:nth-child(1)").innerText;
-        const VIDEO_DATE = "";
-        const VIDEO_DESCRIPTION = "";
-        const OTHER_CONTEXT = "";
-        const prompt = `roleplay: i will give you a series of transcript parts for a youtube video, you need to use a dictionary that i give you to interpret the encoded messages, once i tell you SUMMARIZE, you should summarise the entire transcript by treating all of the individual parts i gave you as one whole transcript, if asked to write code you should use proper formatting, you should only reply with "Understood." until i tell you to summarise, you should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}", remember you should only summarise if i tell you to, if you see !!! it is a palceholder for a profanity, whenever I refer to a transcript or video assume that i'm referring to this video's transcript unless explicitly stated otherwise, remember to also use your own knowledge to add further understanding and context for yourself: `
-
-        // add a preferred level of detail setting
-
-        const difference = isFirstMessage ? chunkSize - (prompt.length + 100) : chunkSize
-
-        let chunk = transcription.slice(start, start + difference);
-        chunk = chunk.replace(/\[Music\]/g, "");
-        chunk = chunk.replace(/\[ __ \]/g, "!!!");
-        count += 1;
-        let modification = replaceWords(
-          `TRANSCRIPT YOUTUBE VIDEO PART ${count}: ${chunk}`
-        );
-        // chunk = modification.modifiedText;
-        chunk = chunk.replace(/\s+/g, " ");
-        const final = `${prompt}
-      ${modification.commonWordsString} ${chunk}`;
-      // const final = `read the following transcript parts which i will give you very very carefully and use your own knowledge to understand the context and more details. you MUST be prepared to answer any and all questions about this youtube video transcript. here is the first part. reply with "Understood." after you have read it very very carefully and are prepared to answer questions on it: ${chunk}.`;
-
-        if (isFirstMessage) {
-          isFirstMessage = false;
-          chunks.push(final);
-          start += difference;
-        } else {
-          chunks.push(chunk);
-          start += difference;
-        }
-      }
-
-      // chunks.push(summarisePrompt);
-
-      handleChunks(chunks);
-    }
-    summarizeDisabled = true;
-
-  });
-
-  return button
-}
-
+// arrow svg for the enter button
 function arrowSvg() {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("stroke", "currentColor");
@@ -969,6 +103,7 @@ function arrowSvg() {
   return svg;
 }
 
+// the loading dots which appear while ChatGPT hasn't finished typing
 function loadingDots() {
   const dots = document.createElement("h1");
   dots.className = "loading-dots";
@@ -976,6 +111,7 @@ function loadingDots() {
   return dots;
 }
 
+// returns an svg for the user or and svg for ChatGPT which is OpenAI's logo
 function Icon(type) {
   if (type === "assistant") {
     const div = document.createElement("div");
@@ -1043,6 +179,724 @@ function Icon(type) {
   }
 }
 
+// svg of a clipboard
+function ClipboardSvg() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.className = "clipboard-svg";
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("class", "h-4 w-4");
+  svg.setAttribute("height", "1em");
+  svg.setAttribute("width", "1em");
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2");
+  svg.appendChild(path);
+
+  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  rect.setAttribute("x", "8");
+  rect.setAttribute("y", "2");
+  rect.setAttribute("width", "8");
+  rect.setAttribute("height", "4");
+  rect.setAttribute("rx", "1");
+  rect.setAttribute("ry", "1");
+  svg.appendChild(rect);
+  return svg;
+}
+
+// svg of a tick mark
+function TickSvg() {
+  // Create the svg element
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.className = "tick-svg";
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke-width", "2");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  svg.setAttribute("class", "h-4 w-4");
+  svg.setAttribute("height", "1em");
+  svg.setAttribute("width", "1em");
+
+  // Create the polyline element
+  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  polyline.setAttribute("points", "20 6 9 17 4 12");
+
+  // Append the polyline element to the svg element
+  svg.appendChild(polyline);
+  return svg;
+}
+
+// when a user clips the "Copy code" button the svg turns into a tick mark and the text to "Copied!" for two seconds before reverting back
+async function handleCopyClick(copyTarget, copyButton) {
+  const textarea = document.createElement("textarea");
+  textarea.value = copyTarget.textContent;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+
+  if (copyButton.querySelector("h4").textContent === "Copy code") {
+    copyButton.querySelector("h4").textContent = "Copied!";
+    copyButton.replaceChild(TickSvg(), copyButton.querySelector("svg"));
+    setTimeout(async () => {
+      copyButton.querySelector("h4").textContent = "Copy code";
+      copyButton.replaceChild(ClipboardSvg(), copyButton.querySelector("svg"));
+    }, 2000);
+  }
+}
+
+// formats the raw text that is given by the decoder from the text stream
+function formatText(text) {
+  /* Handle:
+  [X] - regular blocks
+  [X] - bullet points: check if sentence starts with "-"
+  [] - numbers: use regex to see if sentence starts with "{number}."
+  [] - tables: if it starts and ends with "|" then it's a table
+  [X] - code
+  */
+
+  const parent = document.createElement("div");
+  parent.style.width = "100%";
+  parent.style.whiteSpace = "pre-wrap";
+  parent.style.wordWrap = "break-word";
+  parent.innerHTML = text;
+
+  if (!text.includes("\n")) { // one contiuous text
+    return parent
+  }
+
+  parent.innerHTML = "";
+
+  let arr = text.split("```");
+
+  // the following code just interprets the text to see what the appropriate elements and format should be
+  for (let i = 0; i < arr.length; i++) {
+    if (i % 2 === 0) { // regular block
+      let block = arr[i];
+      let blockText = document.createElement("p");
+      blockText.className = i === 0 ? "block-text-first" : "block-text";
+
+      if (!block.includes("\n\n")) { // one block
+        blockText.innerHTML = block;
+        parent.appendChild(blockText);
+        continue;
+      }
+
+      const blocks = arr[i].split("\n\n");
+
+      for (let j = 0; j < blocks.length; j++) {
+        block = blocks[j];
+        blockText = document.createElement("p");
+        blockText.className = j === 0 ? "block-text-first" : "block-text";
+
+        if (!block.includes("\n")) { // not a list
+          blockText.innerHTML = block;
+          parent.appendChild(blockText);
+          continue;
+        }
+
+        // is a list
+
+        blockText = document.createElement("ul");
+        blockText.className = "list";
+        const lines = block.trimEnd().split("\n");
+
+        for (let k = 0; k < lines.length; k++) {
+          const line = lines[k];
+
+          if (k === 0) {
+            const heading = document.createElement("p");
+            heading.className = k === 0 && j === 0 ? "block-text-first" : "block-text";
+            heading.innerHTML = line;
+            parent.appendChild(heading);
+            continue;
+          }
+
+          const listElement = document.createElement("li");
+          const filteredLine = line.trim().slice(1).trim();
+          listElement.innerHTML = filteredLine;
+          listElement.className = "list-element";
+          blockText.appendChild(listElement);
+        }
+
+        parent.appendChild(blockText);
+      }
+    }
+    else { // code block
+      const block = arr[i];
+      const newCodeBlock = document.createElement("pre");
+      const code = document.createElement("code");
+      code.textContent = block.trim();
+
+      // no need to constantly add a new top bar, where the copy button, is if it is alrady added
+      if (!newCodeBlock.querySelector(".code-top")) {
+        const copyBlock = document.createElement("div");
+        copyBlock.className = "code-top";
+
+        const copyButton = document.createElement("button");
+        copyButton.className = "copy-button"
+
+        copyButton.appendChild(ClipboardSvg());
+
+        const copyText = document.createElement("h4");
+        copyText.textContent = "Copy code"
+        copyButton.appendChild(copyText);
+
+        copyButton.addEventListener("click", () => {
+          handleCopyClick(code, copyButton);
+        });
+
+        copyBlock.appendChild(copyButton);
+        newCodeBlock.appendChild(copyBlock)
+      }
+
+      newCodeBlock.appendChild(code);
+      parent.appendChild(newCodeBlock);
+    }
+
+  }
+
+  return parent;
+}
+
+// appends a new div to the .info-div
+function newMessage(type, text) {
+  if (type === "user") { // no need to format
+    const message = document.createElement("div");
+    message.className = "user-message";
+    const icon = Icon("user");
+    message.appendChild(icon);
+
+    const h1 = document.createElement("h1");
+    h1.className = "question";
+    h1.innerHTML = text;
+    message.appendChild(h1);
+
+    return message
+  }
+
+  // else it's ChatGPT so should be formatted just like it is on the real thing
+  const message = document.createElement("div");
+  message.className = "assistant-message"
+  const icon = Icon("assistant")
+  message.appendChild(icon);
+
+  const h1 = formatText(text); // formats
+  h1.className = "question";
+  message.appendChild(h1);
+
+  return message
+}
+
+// updates the messages visible in the .info-div
+// clears the div and adds the messages back
+// [FIX]: no need to remove entire html and re-add
+function updateMessages() {
+  const infoDiv = document.querySelector(".info-div");
+  infoDiv.innerHTML = "";
+  for (let i = 0; i < MESSAGES.length; i++) {
+    const message = MESSAGES[i]
+
+    const messageDiv = newMessage(message.from, message.message);
+    infoDiv.appendChild(messageDiv);
+  }
+}
+
+window.requestIdleCallback(() => { setTimeout(init, 3000) });
+
+function init() {
+  const buttons = document.querySelectorAll(".summary-toggle-button");
+  const extensions = document.querySelectorAll(".summariser-extension");
+
+  // removes any existing extension components
+  for (const button of buttons) {
+    button.parentNode.removeChild(button);
+  }
+
+  for (const extension of extensions) {
+    extension.parentNode.removeChild(extension);
+  }
+
+  const scriptElements = document.querySelectorAll('script');
+
+  // hides any visible script elements
+  scriptElements.forEach(element => {
+    element.style.display = 'none';
+  });
+
+  // only adds extension if on a youtube video
+  if (!window.location.toString().includes("/watch?v=")) { return }
+  const button_parent = document.querySelector("#above-the-fold > #title");
+  button_parent.appendChild(Button());
+
+  const extension_parent = document.getElementById("secondary-inner");
+  extension_parent.appendChild(Extension());
+
+  // adjusting youtube's elements for extension:
+  button_parent.style.display = "flex";
+  button_parent.style.alignItems = "top";
+
+  const title = document.querySelector("h1.ytd-watch-metadata");
+  title.style.width = `calc(100% - ${BUTTON_WIDTH}px)`;
+}
+
+// findCommonWords returns an array of objects, this is used by ChatGPT to decode encoded messages. Encoded messages = less characters needed to express full transcript.
+function findCommonWords(text) {
+  const mostAreaWords = findMostAreaWords(text); // get a descending list of words which take up the most space in a text (these are the best words to replace to maximise shortening)
+
+  const commonWords = []; // ChatGPT will use this dictionary to interpret coded messages. Messages are coded to reduce the number of characters = less messages = less frequent timeouts.
+  let specialCharactersCopy = specialCharacters.slice();
+
+  for (let i = 0; i < mostAreaWords.length; i++) {
+    const word = mostAreaWords[i];
+    const randomIndex = Math.floor(Math.random() * specialCharactersCopy.length);
+
+    const key = specialCharactersCopy[randomIndex];
+    commonWords.push({ word: word.word, key }); // top 40 most "area" words are assigned a key from the specialCharacters array copy
+    specialCharactersCopy.splice(randomIndex, 1); // avoid duplicate key assignment
+    if (commonWords.length === 40) break;
+  }
+
+  return commonWords;
+}
+
+// returns the encoded transcript and the stringified dictionary that ChatGPT will use to decode it
+function replaceWords(text) {
+  let modifiedText = ""; // final text to be returned
+  let commonWordsString = ""; // stringified dictionary for ChatGPT to reference to 
+
+  const commonWords = findCommonWords(text);
+
+  commonWords.forEach((commonWord) => {
+    // replaces every word in the text with its key
+    modifiedText = modifiedText.replace(new RegExp(`\\b${commonWord.word}\\b`, "gi"), commonWord.key);
+
+    // creates a stringified dictionary to send to ChatGPT, example: word=key,firefox=key2
+    commonWordsString += `${word.word}=${word.key} `;
+  });
+
+  commonWordsString = commonWordsString.trimEnd();
+
+  return { modifiedText, commonWordsString };
+}
+
+// returns a descending list of words which take up the most "area". area = frequency of the word * length of the word
+function findMostAreaWords(text) {
+  const words = text.split(" ");
+  const results = [];
+
+  for (const word of words) {
+    // check if the word has already been added to the results array
+    const existingResult = results.find((result) => result.word === word);
+    if (existingResult) {
+      // if the word has already been added, increment the frequency count
+      existingResult.frequency++;
+    } else {
+      // if the word has not been added, add a new object to the results array
+      results.push({
+        word: word,
+        length: word.length,
+        frequency: 1
+      });
+    }
+  }
+
+  // sort the results array in descending order by frequency * length (area)
+  results.sort((a, b) => b.frequency * b.length - a.frequency * a.length);
+  return results;
+}
+
+// starts new conversation with ChatGPT
+async function startNewConversation(initialMessage) {
+  const id = generateFormattedString(); // generates a random 28 char + 4 dashes string
+  const parent_id = generateFormattedString();
+
+  // body for post request
+  let body = { "action": "next", "messages": [{ "id": id, "role": "user", "content": { "content_type": "text", "parts": [initialMessage] } }], "parent_message_id": parent_id, "model": "text-davinci-002-render" }
+
+  // add new message from user to array, the messages array is used to relay responses onto the div
+  MESSAGES.push({
+    "from": "user",
+    "message": initialMessage,
+    "message_id": id,
+    "parent_message_id": parent_id,
+    "conversation_id": null,
+  })
+
+  // add new message from ChatGPT to array
+  // blank message that will be updated as text stream is recieved from response
+  MESSAGES.push(
+    {
+      "from": "assistant",
+      "message": "",
+      "message_id": "",
+      "conversation_id": "",
+    })
+
+  updateMessages(); // update messages in .info-div to show the user their queries are being processed.
+
+  // calls api point with appropriate body to start a new conversation
+  const response = await fetch("https://chat.openai.com/backend-api/conversation", {
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+      "Accept": "text/event-stream",
+      "Accept-Language": "en-US,en;q=0.5",
+      "Content-Type": "application/json",
+      "Authorization": ACCESS_TOKEN,
+    },
+    "body": JSON.stringify(body),
+    "method": "POST",
+  });
+
+  // response returned if not ok to be processed by the handleError and to retry
+  if (await response.ok === false) {
+    return response
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) { // runs while the text stream isn't finished
+    const { done, value } = await reader.read();
+    if (done || decoder.decode(value).length === 14) { // length 14 implies <empty string> so done
+      break;
+    }
+
+    // filtering the data for extraction of key values
+    let string = decoder.decode(value).toString();
+    let lines = string.split("\n\n");
+    let data = getLastNonEmptyString(lines);
+    let filtered = data.replace(/data: [DONE]: /g, "");
+    filtered = filtered.replace(/data: /g, "");
+
+    try {
+      const message_response = JSON.parse(filtered);
+
+      // key values from the response
+      const response_message_id = message_response.message.id;
+      const response_conversation_id = message_response.conversation_id;
+      const response_error = message_response.error
+      const response_message = message_response.message.content.parts[0]
+      const response_role = message_response.message.role
+
+      // update the latest message which is from ChatGPT as it was pushed earlier
+      MESSAGES[MESSAGES.length - 1] =
+      {
+        "from": response_role,
+        "message": response_message,
+        "message_id": response_message_id,
+        "conversation_id": response_conversation_id
+      }
+
+      updateMessages(); // updates messages seen in the .info-div
+    } catch (error) {
+
+    }
+  }
+
+  return { response, id, parent_id }; // arbitrary return data
+}
+
+// continues existing conversation with ChatGPT
+async function continueConversation(message) {
+  const id = generateFormattedString();
+  let last_user_message = MESSAGES[MESSAGES.length - 2];
+  let last_assistant_message = MESSAGES[MESSAGES.length - 1];
+  const conversation_id = last_assistant_message.conversation_id
+
+  let body = { "action": "next", "conversation_id": conversation_id, "messages": [{ "id": id, "role": "user", "content": { "content_type": "text", "parts": [message] } }], "parent_message_id": last_assistant_message.message_id, "model": "text-davinci-002-render" }
+
+  // pushes message to array to be displayed to the user in the .info-div
+  MESSAGES.push({
+    "from": "user",
+    "message": message,
+    "message_id": id,
+    "parent_message_id": last_user_message.message_id,
+    "conversation_id": conversation_id
+  });
+
+  // pushes blank message from ChatGPT to be updated later when response is given
+  MESSAGES.push(
+    {
+      "from": "assistant",
+      "message": "",
+      "message_id": "",
+      "conversation_id": conversation_id,
+    })
+
+  updateMessages(); // updates the messages displayed to the user in the .info-div
+
+  // calls api point with appropriate body to continue conversation rather than starting a new one
+  const response = await fetch("https://chat.openai.com/backend-api/conversation", {
+    "headers": {
+      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+      "Accept": "text/event-stream",
+      "Accept-Language": "en-US,en;q=0.5",
+      "Content-Type": "application/json",
+      "Authorization": ACCESS_TOKEN,
+    },
+    "body": JSON.stringify(body),
+    "method": "POST",
+  });
+
+  // if response not ok then return the response so it can be handled by the handleError and so that the request can be retried
+  if (await response.ok === false) {
+    return response
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  while (true) { // runs while the text stream isn't finished
+    const { done, value } = await reader.read();
+    if (done || decoder.decode(value).length === 14) { // conditions to check for when to stop
+      break;
+    }
+
+    // data filtration so that key data values can be extracted
+    let string = decoder.decode(value).toString();
+    let lines = string.split("\n\n");
+    let data = getLastNonEmptyString(lines);
+    let filtered = data.replace(/data: [DONE]: /g, "");
+    filtered = filtered.replace(/data: /g, "");
+
+    try {
+      const message_response = JSON.parse(filtered);
+
+      // key values from the response
+      const response_message_id = message_response.message.id;
+      const response_conversation_id = message_response.conversation_id;
+      const response_error = message_response.error
+      const response_message = message_response.message.content.parts[0]
+      const response_role = message_response.message.role
+
+      // updates the latest message in the array because that is ChatGPT's message as pushed earlier
+      MESSAGES[MESSAGES.length - 1] =
+      {
+        "from": response_role,
+        "message": response_message,
+        "message_id": response_message_id,
+        "conversation_id": conversation_id,
+      }
+
+      updateMessages(); // updates the messages as seen on .info-div
+    } catch (error) {
+      // error handling here
+    }
+  }
+
+  return { response }; // arbitrary return data
+}
+
+// handles if the response from calling ChatGPT api point is not ok
+function handleError(statusText) {
+  const multiUtilButton = document.querySelector("[class^='multi-util']");
+
+  if (statusText === "Forbidden") {
+    // Cloudflare check
+    multiUtilButton.className = "multi-util-cloudflare";
+    multiUtilButton.textContent = "Cloudflare check. Click to verify & retry.";
+  } else if (statusText === "Unauthorized") {
+    // Expired Auth
+    multiUtilButton.className = "multi-util-oauth"
+    multiUtilButton.textContent = "OAuth Expired. Click to refresh oauth & retry.";
+  } else if (statusText === "Too Many Requests") {
+    // ChatGPT cooldown
+    multiUtilButton.className = "multi-util-cooldown"
+    multiUtilButton.textContent = "Cooldown. ChatGPT has rate limited you. Switch Account or wait 1 hour.";
+    multiUtilButton.disabled = true;
+  }
+}
+
+// handles if an error occurs when the user first clicks the summarize button
+async function handleChunks(chunks) {
+
+  function retryListener() { // listens for a retry message from the background script which is called when errors such as invalid auth token are overcome
+    const listener = (request, sender, sendResponse) => {
+      if (request.type === "retry") {
+        handleChunks(chunks); // recalls itself when retry message recieved
+        browser.runtime.onMessage.removeListener(listener); // removes itself after first message to avoid stacking
+      }
+    }
+    browser.runtime.onMessage.addListener(listener);
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]
+    await new Promise(resolve => setTimeout(resolve, 250)); // small delay
+    if (i === 0) {
+      // first chunk so need to use startNewConversation function
+      conversation = await startNewConversation(chunk);
+
+      handleError(await conversation.statusText); // handle error if any
+
+      // wait for retry if not ok
+      if (await conversation.ok === false) {
+        retryListener(chunks);
+      } else {
+
+      }
+    } else {
+      // continue the conversation
+      conversation = await continueConversation(chunk);
+
+      handleError(await conversation.statusText); // handle error if any
+
+      // wait for retry if not ok
+      if (await conversation.ok === false) {
+        retryListener(chunks);
+      } else {
+
+      }
+    }
+  }
+}
+
+let apiKey;
+let params;
+
+function Button() {
+  let isTranscriptAvailable = false;
+
+  let buttons = document.querySelectorAll("button, [type='button'], input[type='button']");
+
+  // checks if transcript is available by searching for specific attribute values
+  for (let i = 0; i < buttons.length; i++) {
+    let button = buttons[i];
+    if (button.getAttribute("aria-label") === "Close transcript") {
+      isTranscriptAvailable = true;
+    }
+  }
+
+  const button = document.createElement("button");
+  let summarizeDisabled = false; // used to stop users from repeatedly clicking the summarize button with effect other than to toggle open and close
+
+  button.innerHTML = isTranscriptAvailable ? BUTTON_TEXT : "Not available";
+  button.className = "summary-toggle-button";
+
+  if (!isTranscriptAvailable) {
+    return button;
+  }
+
+  const scriptTags = document.querySelectorAll('script');
+
+  // searches for the script tag with needed data to set the apiKey and params variables
+  for (const scriptTag of scriptTags) {
+    // gets and sets the "params" which is needed as part of the body for the post request to get the transcript of the youtube video 
+    if (scriptTag.textContent.includes('var ytInitialData = ')) {
+      const startIndex = scriptTag.innerHTML.indexOf('"getTranscriptEndpoint":{"params":"');
+      const endIndex = scriptTag.innerHTML.indexOf('"}', startIndex);
+      const substring = scriptTag.innerHTML.substring(startIndex, endIndex + 3);
+      params = substring.split(':')[2].replace(/[}"\\]/g, ""); // set params
+    }
+    // gets and sets the api key using regex
+    else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
+      const regex = /ytcfg\.set\((\{.*\})\);/;
+      let match = regex.exec(scriptTag.textContent);
+      apiKey = JSON.parse(match[1]).INNERTUBE_API_KEY; // set api key
+    }
+  }
+
+  button.addEventListener("click", async (event) => {
+    const extension = document.querySelector(".summariser-extension");
+    extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
+
+    // if hasn't already summarized
+    if (summarizeDisabled === false) {
+      const r = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
+        "body": JSON.stringify({
+          "context": {
+            "client": {
+              "clientName": "WEB",
+              "clientVersion": "2.20221220.09.00",
+              "utcOffsetMinutes": 0,
+            }
+          },
+          "params": params
+        }),
+        "method": "POST"
+      });
+
+      const json = await r.json();
+
+      let chunks = [];
+
+      // all of the transcript lines
+      const initialSegments =
+        json.actions[0].updateEngagementPanelAction.content.transcriptRenderer
+          .content.transcriptSearchPanelRenderer.body.transcriptSegmentListRenderer
+          .initialSegments;
+
+      let transcription = ""; // stores the entire transcription
+
+      // combines all lines from the intialSegments to form one giant transcript
+      for (let segment of initialSegments) {
+        transcription +=
+          segment.transcriptSegmentRenderer.snippet.runs[0].text + " ";
+      }
+
+      // splits transcript into chunks according to the CHUNK_SIZE constant which is 16000 characters
+      let start = 0;
+      let count = 0;
+      let isFirstMessage = true;
+
+      // forming the message(s) to send to ChatGPT 
+      while (start < transcription.length) {
+        const VIDEO_NAME = document.querySelector("h1.ytd-watch-metadata > yt-formatted-string:nth-child(1)").innerText;
+        const VIDEO_DATE = "";
+        const VIDEO_DESCRIPTION = "";
+        const OTHER_CONTEXT = "";
+
+        // the initial prompt to be included with the summary
+        // it tells ChatGPT how to interpret the message
+        const prompt = `roleplay: You are a highly proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. You need to use the dictionary that I give you to interpret the encoded messages. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}". If you see !!! it is a palceholder for a profanity. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
+
+        // [FIX]: add a preferred level of detail setting
+
+        // need to make first chunk smaller due to the prompt text length
+        const difference = isFirstMessage ? CHUNK_SIZE - (prompt.length + 100) : CHUNK_SIZE
+
+        let chunk = transcription.slice(start, start + difference);
+        chunk = chunk.replace(/\[Music\]/g, "");
+        chunk = chunk.replace(/\[ __ \]/g, "!!!");
+        count += 1;
+        let modification = replaceWords(
+          `REPLY WITH "UNDERSTOOD." TRANSCRIPT YOUTUBE VIDEO PART ${count}: READ CAREFULLY AND REMEMBER FULLY: ${chunk}`
+        );
+        chunk = modification.modifiedText;
+        chunk = chunk.replace(/\s+/g, " ");
+        const final = `${prompt}
+      ${modification.commonWordsString} ${chunk}`;
+
+        if (isFirstMessage) {
+          isFirstMessage = false;
+          chunks.push(final);
+          start += difference;
+        } else {
+          chunks.push(chunk);
+          start += difference;
+        }
+      }
+
+      chunks.push(summarisePrompt);
+
+      handleChunks(chunks);
+    }
+
+    // once summary is given the summarize button should not give another summary if clicked, it should only toggle the extension's visibility
+    summarizeDisabled = true;
+  });
+
+  return button
+}
+
+// generates the ids for starting a new conversation
 function generateFormattedString() {
   const characters = '0123456789abcdef';
   let formattedString = '';
@@ -1067,6 +921,9 @@ function getLastNonEmptyString(strings) {
   return "";
 }
 
+// this component is the status bar which is in the .tool-bar-container
+// it shows errors if any occur with the request
+// when clicked it handles these errors; if access token is invalid it handles, if cloudflare check it handles and if rate limited it tells the user
 function MultiUtilButton() {
   const button = document.createElement("button");
   button.className = "multi-util-hidden";
@@ -1074,10 +931,7 @@ function MultiUtilButton() {
   return button;
 }
 
-function CheckStatus() {
-  
-}
-
+// the ToolBar is the component under .textarea-container
 function ToolBar() {
   const container = document.createElement("div");
   container.className = "tool-bar-container";
@@ -1089,21 +943,22 @@ function ToolBar() {
 
   status.addEventListener("click", (event) => {
     event.preventDefault();
-    browser.runtime.sendMessage({ type: 'openTab' });
+    browser.runtime.sendMessage({ type: 'openTab' }); // sends a message to the background to open a new tab at https://chat.openai.com/chat, background script handles getting the access token and sends it back
 
+    // creates a self-removing listener which removes itself after the first message it recieves to avoid stacking
     function addMessageListener() {
       const listener = (request, sender, sendResponse) => {
         if (request.accessToken) {
           ACCESS_TOKEN = "Bearer " + request.accessToken;
-          console.log(request.accessToken);
-          // Remove the listener after it has received the access token
-          browser.runtime.onMessage.removeListener(listener);
-          browser.runtime.sendMessage({ type: 'send-retry' });
-          localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN);
+          browser.runtime.onMessage.removeListener(listener);  // remove the listener after it has received the access token
+          browser.runtime.sendMessage({ type: 'send-retry' }); // now that the access token has been updated a message is sent to retry whatever was the previous request
+          localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN); // set accesstoken in localstroage
+
           const multiUtilButton = document.querySelector("[class^='multi-util']");
           multiUtilButton.className = "multi-util-button"
           multiUtilButton.textContent = "Refreshed Successfully!";
-          setTimeout(() => {
+
+          setTimeout(() => { // hide after two seconds as not to be an eyesore
             multiUtilButton.className = "multi-util-hidden"
             multiUtilButton.textContent = "";
           }, 2000)
@@ -1111,8 +966,8 @@ function ToolBar() {
       }
       browser.runtime.onMessage.addListener(listener);
     }
-    
-    // Add listener and it removes itself after first message to avoid stacking
+
+    // handles the response to the "openTab" message, the response has the accessToken
     addMessageListener();
   });
 
@@ -1123,23 +978,26 @@ function ToolBar() {
   return container;
 }
 
+// the gui for ChatGPT
 function Extension() {
   let isLoading = false;
-  let conversation_id = null;
   const extension = document.createElement("div");
   extension.className = "summariser-extension";
   extension.style.display = "none";
 
   const infoDivContainer = document.createElement("div");
   infoDivContainer.className = "info-div-container";
-  const infoDiv = document.createElement("div");
+
+  const infoDiv = document.createElement("div"); // where all the messages are shown
   infoDiv.className = "info-div";
+
   infoDivContainer.appendChild(infoDiv);
-  let isAtBottom = true;
+  let isAtBottom = true; // auto scrolls when first becomes scrollable
 
   extension.style.height = "auto";
 
   infoDiv.addEventListener('scroll', () => {
+    // [FIX]: not a smooth feel when scrolling up from the bottom
     isAtBottom = infoDiv.scrollTop >= (infoDiv.scrollHeight - infoDiv.clientHeight) - 80;
   });
 
@@ -1149,7 +1007,7 @@ function Extension() {
     const distanceToBottom = infoDiv.scrollHeight - infoDiv.clientHeight - currentScrollPos;
 
     // calculate the duration of the scroll animation based on the distance
-    const scrollDuration = Math.abs(distanceToBottom) * 0.1; // 0.1 is the scroll speed
+    const scrollDuration = Math.abs(distanceToBottom) * 0.05; // 0.05 is the scroll speed
 
     // scroll to the bottom using an animation
     infoDiv.scrollTo({
@@ -1169,27 +1027,6 @@ function Extension() {
     }
   }, 50);
 
-
-
-  for (let i = 0; i < MESSAGES.length; i++) {
-    const message = MESSAGES[i]
-
-    const messageDiv = newMessage(message.from, message.message);
-
-    infoDiv.appendChild(messageDiv);
-  }
-
-  function updateMessages() {
-    infoDiv.innerHTML = "";
-    for (let i = 0; i < MESSAGES.length; i++) {
-      const message = MESSAGES[i];
-
-      const messageDiv = newMessage(message.from, message.message);
-
-      infoDiv.appendChild(messageDiv);
-    }
-  }
-
   const inputFormContainer = document.createElement("div");
   inputFormContainer.className = "input-form-container";
 
@@ -1198,17 +1035,21 @@ function Extension() {
 
   const textareaContainer = document.createElement("div");
   textareaContainer.className = "textarea-container";
+
   const textarea = document.createElement("textarea");
   textarea.rows = 1;
 
+  // set initial heights
   infoDivContainer.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`;
   inputFormContainer.style.height = "160px";
 
+  // adjust heights on resize to be consistent with the size of youtube video player
   window.addEventListener('resize', function () {
     infoDivContainer.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`;
     inputFormContainer.style.height = "160px";
   });
 
+  // the next code handles auto scaling of the textarea with the input
   let timeoutId;
 
   const debounce = (fn, delay) => {
@@ -1225,12 +1066,24 @@ function Extension() {
       (textareaContainer.offsetHeight - textarea.offsetHeight) / 2 + "px";
   }
 
-  // Auto-resize textarea on input
+  // auto-resize textarea on input
   textarea.addEventListener("input", () => {
-    debounce(resizeTextarea, 25);  // execute resizeTextarea after 100ms of inactivity
+    debounce(resizeTextarea, 25);  // text updates more smoothly
   });
 
+  // handle text submit
   function handleSubmit(event) {
+    // self-removing listener to retry handleSubmit once errors are fixed
+    function retryListener(event) {
+      const listener = (request, sender, sendResponse) => {
+        if (request.type === "retry") {
+          handleSubmit(event);
+          browser.runtime.onMessage.removeListener(listener);
+        }
+      }
+      browser.runtime.onMessage.addListener(listener);
+    }
+
     event.preventDefault();
     textarea.innerHTML = "";
     enterButton.innerHTML = "";
@@ -1240,8 +1093,7 @@ function Extension() {
     isLoading = true;
     const input = textarea.value;
 
-    updateMessages();
-
+    // shows the loading dots while ChatGPT is answering
     async function updateDiv() {
       while (isLoading) {
         if (loading.innerHTML === "...") {
@@ -1255,14 +1107,15 @@ function Extension() {
       enterButton.appendChild(arrowSvg());
     }
 
+    // handles the conversation with ChatGPT
     async function fetchData() {
       if (!conversation) {
         conversation = await startNewConversation(input);
-        
-        handleError(await conversation.statusText);
-        
+
+        handleError(await conversation.statusText); // handle error if any
+
         if (await conversation.ok === false) {
-          retryListener(event);
+          retryListener(event); // retries when errors are fixed
         } else {
 
         }
@@ -1270,38 +1123,31 @@ function Extension() {
       } else {
         conversation = await continueConversation(input);
 
-        handleError(await conversation.statusText);
-        
+        handleError(await conversation.statusText); // handle error if any
+
         if (await conversation.ok === false) {
-          retryListener(event);
+          retryListener(event); // retries when errors are fixed
         } else {
-          
+
         }
       }
+
+      // re-enables ability to communicate with ChatGPT
+      // reverts the loading dots back to the arrow svg
 
       isLoading = false;
     }
 
     updateDiv(); // updates the inner HTML of the div every 0.5 seconds
-    fetchData(); // fetches data
-  }
-
-  function retryListener(event) {
-    const listener = (request, sender, sendResponse) => {
-      if (request.type === "retry") {
-        handleSubmit(event);
-        browser.runtime.onMessage.removeListener(listener);
-      }
-    }
-    browser.runtime.onMessage.addListener(listener);
+    fetchData(); // handles conversation
   }
 
   const enterButton = document.createElement("button");
   enterButton.appendChild(arrowSvg());
 
-  enterButton.addEventListener("click", handleSubmit)
+  enterButton.addEventListener("click", handleSubmit);
 
-  enterButton.className = "enter-button"
+  enterButton.className = "enter-button";
 
   textarea.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && isLoading === false) {
@@ -1311,7 +1157,7 @@ function Extension() {
     }
   });
 
-  textareaContainer.append(enterButton)
+  textareaContainer.append(enterButton);
 
   textareaContainer.appendChild(textarea);
 
@@ -1324,43 +1170,3 @@ function Extension() {
   extension.appendChild(inputFormContainer);
   return extension;
 }
-
-/*
-[] - Make a button which turns orange when a cloudflare check is needed and allows the user to go to the website to do so
-[] - This button should also turn red when the user needs to update their oauth token and when clicked it takes them to the website and gets their token from localstorage
-[] - Add a settings button where the previous things can be optimised
-[] - Give every word used more than once a key
-[] - Make the extension resizable
-[] - Make the extension repositionable
-*/
-
-/*
-  
-***REMOVED***
-***REMOVED***
-
-***REMOVED***
-***REMOVED***
-***REMOVED***
-***REMOVED***
-  [X] - Text formatting
-
-
-***REMOVED***
-***REMOVED***
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-*/
