@@ -478,7 +478,7 @@ function replaceWords(text) {
     modifiedText = modifiedText.replace(new RegExp(`\\b${commonWord.word}\\b`, "gi"), commonWord.key);
 
     // creates a stringified dictionary to send to ChatGPT, example: word=key,firefox=key2
-    commonWordsString += `${word.word}=${word.key} `;
+    commonWordsString += `${commonWord.word}=${commonWord.key} `;
   });
 
   commonWordsString = commonWordsString.trimEnd();
