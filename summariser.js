@@ -475,7 +475,7 @@ function replaceWords(text) {
 
   commonWords.forEach((commonWord) => {
     // replaces every word in the text with its key
-    modifiedText = modifiedText.replace(new RegExp(`\\b${commonWord.word}\\b`, "gi"), commonWord.key);
+    modifiedText = text.replace(new RegExp(`\\b${commonWord.word}\\b`, "gi"), commonWord.key);
 
     // creates a stringified dictionary to send to ChatGPT, example: word=key,firefox=key2
     commonWordsString += `${commonWord.word}=${commonWord.key} `;
@@ -1092,6 +1092,7 @@ function Extension() {
     enterButton.appendChild(loading);
     isLoading = true;
     const input = textarea.value;
+    updateMessages();
 
     // shows the loading dots while ChatGPT is answering
     async function updateDiv() {
