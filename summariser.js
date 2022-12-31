@@ -1,39 +1,39 @@
 // Wait for the webpage to finish loading
 // window.onload = () => {
-  // Wait for 5 seconds
-  // setTimeout(() => {
-  //   // Create a link element
-  //   const link = document.createElement('link');
+// Wait for 5 seconds
+// setTimeout(() => {
+//   // Create a link element
+//   const link = document.createElement('link');
 
-  //   // Set the rel and href attributes of the link element
-  //   link.rel = 'stylesheet';
-  //   link.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css';
+//   // Set the rel and href attributes of the link element
+//   link.rel = 'stylesheet';
+//   link.href = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.css';
 
-  //   // Append the link element to the head element
-  //   document.head.appendChild(link);
+//   // Append the link element to the head element
+//   document.head.appendChild(link);
 
-  //   // Create a script element
-  //   const script = document.createElement('script');
+//   // Create a script element
+//   const script = document.createElement('script');
 
-  //   // Set the src attribute of the script element to the CDN link for the Prism.js library
-  //   script.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js';
+//   // Set the src attribute of the script element to the CDN link for the Prism.js library
+//   script.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js';
 
-  //   // Append the script element to the body element
-  //   document.body.appendChild(script);
-  // }, 5000);
+//   // Append the script element to the body element
+//   document.body.appendChild(script);
+// }, 5000);
 // };
 
 const BUTTON_TEXT = "Summarize";
 const BUTTON_WIDTH = 100;
 const EXTENSION_HEIGHT_CINEMA = 500;
 const EXTENSION_WIDTH_CINEMA = 500;
-const ACCESS_TOKEN = "";
-const SESSION_TOKEN = ""
+let ACCESS_TOKEN = localStorage.getItem("summariser-extension-access-token") || "Bearer none"
 const chunkSize = 16000;
 const promptString = ""
 let conversation = null;
 let originalUrl = "";
 let isFirstRender = false;
+let status = "ok";
 
 const specialCharacters = [
   "@",
@@ -102,11 +102,11 @@ browser.runtime.onMessage.addListener((message) => {
     if (currentLocation !== getVideoId(message.url)) {
       const buttons = document.querySelectorAll(".main-toggle-button");
       const extensions = document.querySelectorAll(".summariser-extension");
-    
+
       for (const button of buttons) {
         button.parentNode.removeChild(button);
       }
-    
+
       for (const extension of extensions) {
         extension.parentNode.removeChild(extension);
       }
@@ -174,7 +174,7 @@ function TickSvg() {
   return svg;
 }
 
-async function handleCopyClick (copyTarget, copyButton) {
+async function handleCopyClick(copyTarget, copyButton) {
   const textarea = document.createElement("textarea");
   textarea.value = copyTarget.textContent;
   document.body.appendChild(textarea);
@@ -214,7 +214,7 @@ function formatText(text) {
   parent.innerHTML = "";
 
   let arr = text.split("```");
-  
+
   for (let i = 0; i < arr.length; i++) {
     if (i % 2 === 0) {
       // regular block
@@ -230,7 +230,7 @@ function formatText(text) {
 
       const blocks = arr[i].split("\n\n");
 
-      for (let j=0; j < blocks.length; j++) {
+      for (let j = 0; j < blocks.length; j++) {
         block = blocks[j];
         blockText = document.createElement("p");
         blockText.className = j === 0 ? "block-text-first" : "block-text";
@@ -247,7 +247,7 @@ function formatText(text) {
         blockText.className = "list";
         const lines = block.trimEnd().split("\n");
 
-        for (let k=0; k < lines.length; k++) {
+        for (let k = 0; k < lines.length; k++) {
           const line = lines[k];
 
           if (k === 0) {
@@ -310,18 +310,18 @@ function formatText(text) {
       if (!newCodeBlock.querySelector(".code-top")) {
         const copyBlock = document.createElement("div");
         copyBlock.className = "code-top";
-  
+
         // Create the copy button
         const copyButton = document.createElement("button");
         copyButton.className = "copy-button"
-  
+
         copyButton.appendChild(ClipboardSvg());
-  
+
         // Create the text element and append it to the span
         const copyText = document.createElement("h4");
         copyText.textContent = "Copy code"
         copyButton.appendChild(copyText);
-        
+
         copyButton.addEventListener("click", () => {
           handleCopyClick(code, copyButton);
         });
@@ -329,12 +329,12 @@ function formatText(text) {
         copyBlock.appendChild(copyButton);
         newCodeBlock.appendChild(copyBlock)
       }
-      
+
       // Append the copy button to the code block
       newCodeBlock.appendChild(code);
       parent.appendChild(newCodeBlock);
     }
-    
+
   }
 
   return parent;
@@ -412,6 +412,7 @@ function newMessage(type, text) {
   h1.className = "question";
   message.appendChild(h1);
 
+  // document.querySelector(".info-div").scrollTop = document.querySelector(".info-div").scrollHeight - document.querySelector(".info-div").clientHeight;
   return message
 }
 
@@ -458,7 +459,7 @@ function main() {
   for (const extension of extensions) {
     extension.parentNode.removeChild(extension);
   }
-  
+
   const scriptElements = document.querySelectorAll('script');
 
   scriptElements.forEach(element => {
@@ -560,6 +561,8 @@ async function startNewConversation(initialMessage) {
 
   let body = { "action": "next", "messages": [{ "id": id, "role": "user", "content": { "content_type": "text", "parts": [initialMessage] } }], "parent_message_id": parent_id, "model": "text-davinci-002-render" }
 
+  console.log(initialMessage);
+
   MESSAGES.push({
     "from": "user",
     "message": initialMessage,
@@ -584,11 +587,17 @@ async function startNewConversation(initialMessage) {
       "Accept": "text/event-stream",
       "Accept-Language": "en-US,en;q=0.5",
       "Content-Type": "application/json",
-      "Authorization": "Bearer ",
+      "Authorization": ACCESS_TOKEN,
     },
     "body": JSON.stringify(body),
     "method": "POST",
   });
+
+  console.log(response);
+
+  if (await response.ok === false) {
+    return response
+  }
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -670,13 +679,18 @@ async function continueConversation(message) {
       "Accept": "text/event-stream",
       "Accept-Language": "en-US,en;q=0.5",
       "Content-Type": "application/json",
-      "Authorization": "Bearer ",
+      "Authorization": ACCESS_TOKEN,
     },
     "body": JSON.stringify(body),
     "method": "POST",
   });
 
   console.log(response);
+
+  if (await response.ok === false) {
+    return response
+  }
+
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
 
@@ -724,6 +738,70 @@ async function continueConversation(message) {
   return { response };
 }
 
+function handleError(statusText) {
+  status = statusText;
+  console.log(status);
+
+  const multiUtilButton = document.querySelector("[class^='multi-util']");
+
+  if (status === "Forbidden") {
+    // Cloudflare
+    multiUtilButton.className = "multi-util-cloudflare";
+    multiUtilButton.textContent = "Cloudflare check. Click to verify & retry.";
+  } else if (status === "Unauthorized") {
+    // Expired Auth
+    multiUtilButton.className = "multi-util-oauth"
+    multiUtilButton.textContent = "OAuth Expired. Click to refresh oauth & retry.";
+  } else if (status === "Too Many Requests") {
+    // ChatGPT cooldown
+    multiUtilButton.className = "multi-util-cooldown"
+    multiUtilButton.textContent = "Cooldown. ChatGPT has rate limited you. Switch Account or wait 1 hour.";
+    multiUtilButton.disabled = true;
+  }
+}
+
+async function handleChunks(chunks) {
+  function retryListener() {
+    const listener = (request, sender, sendResponse) => {
+      if (request.type === "retry") {
+        handleChunks(chunks);
+        browser.runtime.onMessage.removeListener(listener);
+      }
+    }
+    browser.runtime.onMessage.addListener(listener);
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]
+    if (i === 0) {
+      // first chunk so need to use startNewConversation function
+      conversation = await startNewConversation(chunk);
+
+      handleError(await conversation.statusText);
+      
+      if (await conversation.ok === false) {
+        retryListener(chunks);
+        console.log("retried");
+      } else {
+        
+      }
+    } else {
+      // continue the conversation
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+      conversation = await continueConversation(chunk);
+      
+      handleError(await conversation.statusText);
+      
+      if (await conversation.ok === false) {
+        retryListener(chunks);
+        console.log("retried");
+      } else {
+        
+      }
+    }
+  }
+}
+
 let apiKey;
 let params;
 
@@ -739,7 +817,7 @@ function Button() {
       isTranscriptAvailable = true;
     }
   }
-  
+
   const button = document.createElement("button");
   let summarizeDisabled = false;
 
@@ -752,32 +830,32 @@ function Button() {
 
   // do setup if no apiKey & params & originalUrl
   // if (isFirstRender) {
-    // first time loading so set params and original url;
-    isFirstRender = false;
-    originalUrl = "https://youtube.com/watch?v=" + getVideoId(window.location.toString()); // set original url
-    const scriptTags = document.querySelectorAll('script');
+  // first time loading so set params and original url;
+  isFirstRender = false;
+  originalUrl = "https://youtube.com/watch?v=" + getVideoId(window.location.toString()); // set original url
+  const scriptTags = document.querySelectorAll('script');
 
-    for (const scriptTag of scriptTags) {
-      if (scriptTag.textContent.includes('var ytInitialData = ')) {
-        // const regex = /ytInitialData\s*=\s*(.+?);/;
-        // match = regex.exec(scriptTag.innerHTML);
+  for (const scriptTag of scriptTags) {
+    if (scriptTag.textContent.includes('var ytInitialData = ')) {
+      // const regex = /ytInitialData\s*=\s*(.+?);/;
+      // match = regex.exec(scriptTag.innerHTML);
 
-        const startIndex = scriptTag.innerHTML.indexOf('"getTranscriptEndpoint":{"params":"');
-        const endIndex = scriptTag.innerHTML.indexOf('"}', startIndex);  
-        const substring = scriptTag.innerHTML.substring(startIndex, endIndex + 3);
-        console.log(endIndex);
-        console.log(startIndex);
-        console.log(substring);
-        params = substring.split(':')[2].replace(/[}"\\]/g, ""); // set params
-        console.log(substring.split(':'));
-        console.log(params);
-      } else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
-        // Use a regular expression to parse the function
-        const regex = /ytcfg\.set\((\{.*\})\);/;
-        let match = regex.exec(scriptTag.textContent);
-        apiKey = JSON.parse(match[1]).INNERTUBE_API_KEY; // set api key
-      }
+      const startIndex = scriptTag.innerHTML.indexOf('"getTranscriptEndpoint":{"params":"');
+      const endIndex = scriptTag.innerHTML.indexOf('"}', startIndex);
+      const substring = scriptTag.innerHTML.substring(startIndex, endIndex + 3);
+      console.log(endIndex);
+      console.log(startIndex);
+      console.log(substring);
+      params = substring.split(':')[2].replace(/[}"\\]/g, ""); // set params
+      console.log(substring.split(':'));
+      console.log(params);
+    } else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
+      // Use a regular expression to parse the function
+      const regex = /ytcfg\.set\((\{.*\})\);/;
+      let match = regex.exec(scriptTag.textContent);
+      apiKey = JSON.parse(match[1]).INNERTUBE_API_KEY; // set api key
     }
+  }
   // }
 
   button.addEventListener("click", async (event) => {
@@ -808,7 +886,7 @@ function Button() {
       console.log(params)
       console.log(originalUrl)
       console.log("https://youtube.com/watch?v=" + getVideoId(window.location.toString()))
-      
+
       let chunks = [];
 
       const initialSegments =
@@ -826,7 +904,7 @@ function Button() {
       let start = 0;
       let count = 0;
       let isFirstMessage = true;
-      const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Use chapters and use bullet points in your summary, use your own knowledge to aid yourself in interpretation and context. Your summary needs to be detailed and accurate but concise, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points. ALSO remember that if i use words like "video" or "transcript" i am asking about the transcript that I gave you, start your summary with "Got It." to show you understand.`
+      const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Think really hard and carefully about the transcript when asked questions about it consider every single word , use your own knowledge to aid yourself in interpretation and context. Your summary needs to be exhaustive and detailed, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points. ALSO remember that if i use words like "video" or "transcript" i am asking about the transcript that I gave you, start your summary with "Got It." to show you understand.`
 
       while (start < transcription.length) {
         const VIDEO_NAME = document.querySelector("h1.ytd-watch-metadata > yt-formatted-string:nth-child(1)").innerText;
@@ -846,10 +924,11 @@ function Button() {
         let modification = replaceWords(
           `TRANSCRIPT YOUTUBE VIDEO PART ${count}: ${chunk}`
         );
-        chunk = modification.modifiedText;
+        // chunk = modification.modifiedText;
         chunk = chunk.replace(/\s+/g, " ");
         const final = `${prompt}
       ${modification.commonWordsString} ${chunk}`;
+      // const final = `read the following transcript parts which i will give you very very carefully and use your own knowledge to understand the context and more details. you MUST be prepared to answer any and all questions about this youtube video transcript. here is the first part. reply with "Understood." after you have read it very very carefully and are prepared to answer questions on it: ${chunk}.`;
 
         if (isFirstMessage) {
           isFirstMessage = false;
@@ -861,25 +940,9 @@ function Button() {
         }
       }
 
-      chunks.push(summarisePrompt);
+      // chunks.push(summarisePrompt);
 
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i]
-        if (i === 0) {
-          // first chunk so need to use startNewConversation function
-          conversation = await startNewConversation(chunk);
-        } else {
-          // continue the conversation
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          conversation = await continueConversation(chunk);
-        }
-      }
-
-      if (chunks.length > 1) {
-        // if more than one chunk then can't be one message, handle this maybe inform the user
-      } else {
-        // regular procedure
-      }
+      handleChunks(chunks);
     }
     summarizeDisabled = true;
 
@@ -1004,17 +1067,68 @@ function getLastNonEmptyString(strings) {
   return "";
 }
 
+function MultiUtilButton() {
+  const button = document.createElement("button");
+  button.className = "multi-util-hidden";
+
+  return button;
+}
+
+function CheckStatus() {
+  
+}
+
+function ToolBar() {
+  const container = document.createElement("div");
+  container.className = "tool-bar-container";
+
+  const settings = document.createElement("button");
+  settings.className = "settings-button";
+
+  const status = MultiUtilButton();
+
+  status.addEventListener("click", (event) => {
+    event.preventDefault();
+    browser.runtime.sendMessage({ type: 'openTab' });
+
+    function addMessageListener() {
+      const listener = (request, sender, sendResponse) => {
+        if (request.accessToken) {
+          ACCESS_TOKEN = "Bearer " + request.accessToken;
+          console.log(request.accessToken);
+          // Remove the listener after it has received the access token
+          browser.runtime.onMessage.removeListener(listener);
+          browser.runtime.sendMessage({ type: 'send-retry' });
+          localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN);
+          const multiUtilButton = document.querySelector("[class^='multi-util']");
+          multiUtilButton.className = "multi-util-button"
+          multiUtilButton.textContent = "Refreshed Successfully!";
+          setTimeout(() => {
+            multiUtilButton.className = "multi-util-hidden"
+            multiUtilButton.textContent = "";
+          }, 2000)
+        }
+      }
+      browser.runtime.onMessage.addListener(listener);
+    }
+    
+    // Add listener and it removes itself after first message to avoid stacking
+    addMessageListener();
+  });
+
+
+  container.appendChild(status);
+  container.appendChild(settings);
+
+  return container;
+}
+
 function Extension() {
   let isLoading = false;
   let conversation_id = null;
   const extension = document.createElement("div");
   extension.className = "summariser-extension";
   extension.style.display = "none";
-  extension.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`
-  
-  window.addEventListener('resize', function() {
-    extension.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`
-  });  
 
   const infoDivContainer = document.createElement("div");
   infoDivContainer.className = "info-div-container";
@@ -1023,37 +1137,39 @@ function Extension() {
   infoDivContainer.appendChild(infoDiv);
   let isAtBottom = true;
 
+  extension.style.height = "auto";
+
   infoDiv.addEventListener('scroll', () => {
-    isAtBottom = infoDiv.scrollTop >= (infoDiv.scrollHeight - infoDiv.clientHeight) - 40;
+    isAtBottom = infoDiv.scrollTop >= (infoDiv.scrollHeight - infoDiv.clientHeight) - 80;
   });
-  
+
   function smoothScrollToBottom() {
     // get the current scroll position and the distance to the bottom
     const currentScrollPos = infoDiv.scrollTop;
     const distanceToBottom = infoDiv.scrollHeight - infoDiv.clientHeight - currentScrollPos;
-  
+
     // calculate the duration of the scroll animation based on the distance
     const scrollDuration = Math.abs(distanceToBottom) * 0.1; // 0.1 is the scroll speed
-  
+
     // scroll to the bottom using an animation
     infoDiv.scrollTo({
       top: infoDiv.scrollHeight - infoDiv.clientHeight,
       behavior: 'smooth',
     });
-  
+
     // set a timeout to reset the isAtBottom flag after the animation is complete
     setTimeout(() => {
       isAtBottom = true;
     }, scrollDuration);
   }
-  
+
   setInterval(() => {
     if (isAtBottom) {
       smoothScrollToBottom();
     }
   }, 50);
-  
-  
+
+
 
   for (let i = 0; i < MESSAGES.length; i++) {
     const message = MESSAGES[i]
@@ -1085,13 +1201,21 @@ function Extension() {
   const textarea = document.createElement("textarea");
   textarea.rows = 1;
 
+  infoDivContainer.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`;
+  inputFormContainer.style.height = "160px";
+
+  window.addEventListener('resize', function () {
+    infoDivContainer.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`;
+    inputFormContainer.style.height = "160px";
+  });
+
   let timeoutId;
 
   const debounce = (fn, delay) => {
-  if (timeoutId) {
-    clearTimeout(timeoutId);
-  }
-  timeoutId = setTimeout(fn, delay);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    timeoutId = setTimeout(fn, delay);
   };
 
   function resizeTextarea() {
@@ -1131,27 +1255,28 @@ function Extension() {
       enterButton.appendChild(arrowSvg());
     }
 
-    const getSession = async () => {
-      const res = await fetch("https://chat.openai.com/api/auth/session", {
-        headers: {
-          cookie: `__Secure-next-auth.session-token=${SESSION_TOKEN}`,
-          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        },
-      });
-
-      alert(await res.json());
-
-      // return accessToken;
-    };
-
-    // getSession();
-    // let conversation;
-
     async function fetchData() {
       if (!conversation) {
         conversation = await startNewConversation(input);
+        
+        handleError(await conversation.statusText);
+        
+        if (await conversation.ok === false) {
+          retryListener(event);
+        } else {
+
+        }
+
       } else {
         conversation = await continueConversation(input);
+
+        handleError(await conversation.statusText);
+        
+        if (await conversation.ok === false) {
+          retryListener(event);
+        } else {
+          
+        }
       }
 
       isLoading = false;
@@ -1159,6 +1284,16 @@ function Extension() {
 
     updateDiv(); // updates the inner HTML of the div every 0.5 seconds
     fetchData(); // fetches data
+  }
+
+  function retryListener(event) {
+    const listener = (request, sender, sendResponse) => {
+      if (request.type === "retry") {
+        handleSubmit(event);
+        browser.runtime.onMessage.removeListener(listener);
+      }
+    }
+    browser.runtime.onMessage.addListener(listener);
   }
 
   const enterButton = document.createElement("button");
@@ -1181,6 +1316,7 @@ function Extension() {
   textareaContainer.appendChild(textarea);
 
   inputForm.appendChild(textareaContainer);
+  inputForm.appendChild(ToolBar());
 
   inputFormContainer.appendChild(inputForm);
 
@@ -1188,6 +1324,15 @@ function Extension() {
   extension.appendChild(inputFormContainer);
   return extension;
 }
+
+/*
+[] - Make a button which turns orange when a cloudflare check is needed and allows the user to go to the website to do so
+[] - This button should also turn red when the user needs to update their oauth token and when clicked it takes them to the website and gets their token from localstorage
+[] - Add a settings button where the previous things can be optimised
+[] - Give every word used more than once a key
+[] - Make the extension resizable
+[] - Make the extension repositionable
+*/
 
 /*
   
