@@ -9,9 +9,6 @@ let originalUrl = "";
 let isFirstRender = false;
 let status = "ok";
 
-// this prompt is sent to ChatGPT to intialise the summary after all of the transcript parts have been given
-const summarisePrompt = `summarise the given texts treating them as one whole continuous transcription. Think really hard and carefully about the transcript when asked questions about it consider every single word , use your own knowledge to aid yourself in interpretation and context. Your summary needs to be exhaustive and detailed, be prepared to answer any questions about the video or topics, themes discussed in the video. Remember to use chapters and bullet points. ALSO remember that if i use words like "video" or "transcript" i am asking about the transcript that I gave you, start your summary with "Got It." to show you understand.`
-
 // top 40 words in a text are assigned a special character to create a dictionary which ChatGPT will use to decode messages, this allows for more characters to be put in a single message
 const specialCharacters = [
   'Ä', 'Ö', 'Ü', 'Æ', 'Ø', 'Å', 'ß', 'Œ', 'œ', 'ß', 'Ǟ', 'ǟ', 'Ǻ', 'ǻ',
@@ -468,14 +465,15 @@ function findCommonWords(text) {
 
 // returns the encoded transcript and the stringified dictionary that ChatGPT will use to decode it
 function replaceWords(text) {
-  let modifiedText = ""; // final text to be returned
+  let modifiedText = text; // final text to be returned
   let commonWordsString = ""; // stringified dictionary for ChatGPT to reference to 
 
   const commonWords = findCommonWords(text);
 
   commonWords.forEach((commonWord) => {
     // replaces every word in the text with its key
-    modifiedText = text.replace(new RegExp(`\\b${commonWord.word}\\b`, "gi"), commonWord.key);
+    console.log(commonWord.word);
+    modifiedText = modifiedText.replace(new RegExp(`\\b${commonWord.word}\\b`, "g"), commonWord.key);
 
     // creates a stringified dictionary to send to ChatGPT, example: word=key,firefox=key2
     commonWordsString += `${commonWord.word}=${commonWord.key} `;
@@ -553,6 +551,14 @@ async function startNewConversation(initialMessage) {
     "body": JSON.stringify(body),
     "method": "POST",
   });
+
+  console.log(body);
+  console.log(response);
+
+  if (await response.statusText === "Internal Server Error") {
+    MESSAGES = []
+    return startNewConversation(initialMessage);
+  }
 
   // response returned if not ok to be processed by the handleError and to retry
   if (await response.ok === false) {
@@ -709,18 +715,19 @@ function handleError(statusText) {
   } else if (statusText === "Too Many Requests") {
     // ChatGPT cooldown
     multiUtilButton.className = "multi-util-cooldown"
-    multiUtilButton.textContent = "Cooldown. ChatGPT has rate limited you. Switch Account or wait 1 hour.";
+    multiUtilButton.textContent = "Cooldown. ChatGPT has rate limited you. Switch Account or wait 1 hour. Your oauth has been reset for you.";
+    localStorage.removeItem("summariser-extension-access-token")
     multiUtilButton.disabled = true;
   }
 }
 
 // handles if an error occurs when the user first clicks the summarize button
-async function handleChunks(chunks) {
+async function handleChunks(chunks, type) {
 
   function retryListener() { // listens for a retry message from the background script which is called when errors such as invalid auth token are overcome
     const listener = (request, sender, sendResponse) => {
       if (request.type === "retry") {
-        handleChunks(chunks); // recalls itself when retry message recieved
+        handleChunks(chunks, "retry"); // recalls itself when retry message recieved
         browser.runtime.onMessage.removeListener(listener); // removes itself after first message to avoid stacking
       }
     }
@@ -734,7 +741,14 @@ async function handleChunks(chunks) {
       // first chunk so need to use startNewConversation function
       conversation = await startNewConversation(chunk);
 
-      handleError(await conversation.statusText); // handle error if any
+      // accounting for strange behavior
+      if (await conversation.statusText === "Too Many Requests" && type === "retry") {
+        const multiUtilButton = document.querySelector("[class^='multi-util']");
+        multiUtilButton.className = "multi-util-button"
+        multiUtilButton.textContent = "Refreshed Successfully!";
+      }else {
+        handleError(await conversation.statusText); // handle error if any
+      }
 
       // wait for retry if not ok
       if (await conversation.ok === false) {
@@ -746,7 +760,14 @@ async function handleChunks(chunks) {
       // continue the conversation
       conversation = await continueConversation(chunk);
 
-      handleError(await conversation.statusText); // handle error if any
+      // accounting for strange behavior
+      if (await conversation.statusText === "Too Many Requests" && type === "retry") {
+        const multiUtilButton = document.querySelector("[class^='multi-util']");
+        multiUtilButton.className = "multi-util-button"
+        multiUtilButton.textContent = "Refreshed Successfully!";
+      }else {
+        handleError(await conversation.statusText); // handle error if any
+      }
 
       // wait for retry if not ok
       if (await conversation.ok === false) {
@@ -837,14 +858,17 @@ function Button() {
 
       // combines all lines from the intialSegments to form one giant transcript
       for (let segment of initialSegments) {
-        transcription +=
+        transcription += segment.transcriptSegmentRenderer.startTimeText.simpleText + " " +
           segment.transcriptSegmentRenderer.snippet.runs[0].text + " ";
       }
+
+      console.log(transcription);
 
       // splits transcript into chunks according to the CHUNK_SIZE constant which is 16000 characters
       let start = 0;
       let count = 0;
       let isFirstMessage = true;
+      let summarisePrompt;
 
       // forming the message(s) to send to ChatGPT 
       while (start < transcription.length) {
@@ -855,7 +879,7 @@ function Button() {
 
         // the initial prompt to be included with the summary
         // it tells ChatGPT how to interpret the message
-        const prompt = `roleplay: You are a highly proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. You need to use the dictionary that I give you to interpret the encoded messages. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}". If you see !!! it is a palceholder for a profanity. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
+        const prompt = `EACH TRANSCRIPT LINE HAS A TIMESTAMP PRECEDING IT. You are a highly proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}" and is ${document.querySelector(".ytp-time-duration").textContent} long. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
 
         // [FIX]: add a preferred level of detail setting
 
@@ -869,10 +893,12 @@ function Button() {
         let modification = replaceWords(
           `REPLY WITH "UNDERSTOOD." TRANSCRIPT YOUTUBE VIDEO PART ${count}: READ CAREFULLY AND REMEMBER FULLY: ${chunk}`
         );
-        chunk = modification.modifiedText;
+        // chunk = modification.modifiedText;
         chunk = chunk.replace(/\s+/g, " ");
-        const final = `${prompt}
-      ${modification.commonWordsString} ${chunk}`;
+        const final = `${prompt} TRANSCRIPT PART 1: ${chunk}`;
+
+        // this prompt is sent to ChatGPT to intialise the summary after all of the transcript parts have been given
+        summarisePrompt = `whenever i talk about a "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. As a part of your roleplay you must give the best most high quality summary imaginable of the video transcript using chapters and bullet points. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you . ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}.`
 
         if (isFirstMessage) {
           isFirstMessage = false;
@@ -882,6 +908,8 @@ function Button() {
           chunks.push(chunk);
           start += difference;
         }
+
+        console.log(chunk);
       }
 
       chunks.push(summarisePrompt);
@@ -938,6 +966,7 @@ function ToolBar() {
 
   const settings = document.createElement("button");
   settings.className = "settings-button";
+  settings.disabled = true;
 
   const status = MultiUtilButton();
 
