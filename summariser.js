@@ -1281,7 +1281,6 @@ async function sendmessageToChatGPT(message, messageType = "normal", encodingEna
 }
 
 let autoScroll = true
-let oldScrollY = infoDiv.scrollY;
 let timeoutId;
 
 const debounce = (fn, delay) => {
@@ -1309,18 +1308,12 @@ function Extension() {
   infoDiv.appendChild(lowerDiv)
 
   infoDivContainer.appendChild(infoDiv);
-
-  function scrollToBottom() {
-    if (autoScroll) {
-      infoDiv.scrollTop = (infoDiv.scrollHeight - infoDiv.clientHeight);
-    }
-    requestAnimationFrame(scrollToBottom);
-  }
   
-  scrollToBottom();
+  // requestanimationframe for smoother scroll
+  let oldScrollY = infoDiv.scrollY;
 
   infoDiv.onscroll = function(e) {
-    if(oldScrollY < window.scrollY){
+    if(oldScrollY < infoDiv.scrollY){
       if (infoDiv.scrollTop !== 0) {
         autoScroll = false;
       }
@@ -1329,6 +1322,14 @@ function Extension() {
     }
     oldScrollY = infoDiv.scrollY;
   }
+
+  extension.style.height = "auto";
+
+  setInterval(() => {
+    if (autoScroll) {
+      infoDiv.scrollTop = (infoDiv.scrollHeight - infoDiv.clientHeight)
+    }
+  }, 100);
 
   extension.style.height = "auto";
 
