@@ -9,7 +9,7 @@
     "background": {
       "scripts": ["background.js"]
     },
-    "permissions": [ "background", "runtime", "tabs", "*://*.youtube.com/*", "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*", "https://chat.openai.com/backend-api/conversation","storage", "webRequest", "webRequestBlocking", "webNavigation", "activeTab", "<all_urls>", "cookies", "https://chat.openai.com/api/auth/session"],
+    "permissions": ["tabs", "*://*.youtube.com/*", "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*", "https://chat.openai.com/backend-api/conversation","storage", "webRequest", "webRequestBlocking", "webNavigation", "activeTab", "<all_urls>", "cookies", "https://chat.openai.com/api/auth/session"],
     "content_scripts": [
       {
         "matches": [ "*://*.youtube.com/*", "https://www.youtube.com/watch?*", "https://www.youtube.com/playlist?*"],

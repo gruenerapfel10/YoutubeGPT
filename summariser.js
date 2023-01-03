@@ -369,7 +369,7 @@ function formatText(text) {
   parent.style.width = "100%";
   parent.style.whiteSpace = "pre-wrap";
   parent.style.wordWrap = "break-word";
-  parent.innerHTML = text;
+  parent.textContent = text;
 
   if (!text.includes("\n")) { // one contiuous text
     return parent
@@ -387,7 +387,7 @@ function formatText(text) {
       blockText.className = i === 0 ? "block-text-first" : "block-text";
 
       if (!block.includes("\n\n")) { // one block
-        blockText.innerHTML = block;
+        blockText.textContent = block;
         parent.appendChild(blockText);
         continue;
       }
@@ -400,7 +400,7 @@ function formatText(text) {
         blockText.className = j === 0 ? "block-text-first" : "block-text";
 
         if (!block.includes("\n")) { // not a list
-          blockText.innerHTML = block;
+          blockText.textContent = block;
           parent.appendChild(blockText);
           continue;
         }
@@ -424,7 +424,7 @@ function formatText(text) {
 
           const listElement = document.createElement("li");
           const filteredLine = line.trim().slice(1).trim();
-          listElement.innerHTML = filteredLine;
+          listElement.textContent = filteredLine;
           listElement.className = "list-element";
           blockText.appendChild(listElement);
         }
@@ -479,7 +479,7 @@ function newMessage(type, text) {
 
     const h1 = document.createElement("h1");
     h1.className = "question";
-    h1.innerHTML = text;
+    h1.textContent = text;
     message.appendChild(h1);
 
     return message
@@ -981,7 +981,7 @@ function Button() {
   const button = document.createElement("button");
   let hasAlreadySummarized = false; // used to stop users from repeatedly clicking the summarize button with effect other than to toggle open and close
 
-  button.innerHTML = transcriptAvailable ? BUTTON_TEXT : "Not available";
+  button.textContent = transcriptAvailable ? BUTTON_TEXT : "Not available";
   button.className = "summary-toggle-button";
 
   if (!transcriptAvailable) {
