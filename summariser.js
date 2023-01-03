@@ -1,13 +1,55 @@
 const BUTTON_TEXT = "Summarize";
-const BUTTON_WIDTH = 100;
-const EXTENSION_HEIGHT_CINEMA = 500;
-const EXTENSION_WIDTH_CINEMA = 500;
+const BUTTON_WIDTH = 100; // px
 let ACCESS_TOKEN = localStorage.getItem("summariser-extension-access-token") || "Bearer none" // if none then when user clicks the summarize button it will get it for them
+let PFP = localStorage.getItem("summariser-extension-pfp") // if none then when user clicks the summarize button it will get it for them
 const CHUNK_SIZE = 16000; // messages are split into chunks in order to fit the full transcript to ChatGPT
 let conversation = null; // ChatGPT conversation, if null then need to start one else continue existing conversation
-let originalUrl = "";
-let isFirstRender = false;
-let status = "ok";
+const ENCODING = false; // encoding messages = more transcript can fit in less messages but can result in less accurate summaries and abilities
+
+const lightSvg = lightThemeSVG();
+const darkSvg = darkThemeSVG();
+
+const darkThemeColors = {
+  primaryColor: "rgba(53, 55, 64, 1)",
+  primaryColorInvisible: "rgba(53, 55, 64, 0)",
+  secondaryColor: "rgba(68, 70, 84, 1)",
+  tertiaryColor: "rgba(68, 70, 84, 1)",
+  fontColor: "rgba(255, 255, 255, 1)",
+}
+
+const lightThemeColors = {
+  primaryColor: "rgba(255, 255, 255, 1)",
+  primaryColorInvisible: "rgba(255, 255, 255, 0)",
+  secondaryColor: "rgba(247, 247, 248, 1)",
+  tertiaryColor: "rgba(247, 247, 248, 1)",
+  fontColor: "rgba(0, 0, 0)",
+}
+
+function setLightThemeRoot() {
+  document.documentElement.style.setProperty("--primary-color", lightThemeColors.primaryColor);
+  document.documentElement.style.setProperty("--primary-color-invisible", lightThemeColors.primaryColorInvisible);
+  document.documentElement.style.setProperty("--secondary-color", lightThemeColors.secondaryColor);
+  document.documentElement.style.setProperty("--tertiary-color", lightThemeColors.tertiaryColor);
+  document.documentElement.style.setProperty("--font-color", lightThemeColors.fontColor);
+}
+
+function setDarkThemeRoot() {
+  document.body.classList.add("dark-theme");
+  document.documentElement.style.setProperty("--primary-color", darkThemeColors.primaryColor);
+  document.documentElement.style.setProperty("--primary-color-invisible", darkThemeColors.primaryColorInvisible);
+  document.documentElement.style.setProperty("--secondary-color", darkThemeColors.secondaryColor);
+  document.documentElement.style.setProperty("--tertiary-color", darkThemeColors.tertiaryColor);
+  document.documentElement.style.setProperty("--font-color", darkThemeColors.fontColor);
+}
+
+const darkColorScheme = window.matchMedia("(prefers-color-scheme: dark)");
+if (darkColorScheme.matches) {
+  document.body.classList.add("dark-theme");
+  setDarkThemeRoot()
+} else {
+  document.body.classList.add("light-theme");
+  setLightThemeRoot()
+}
 
 // top 40 words in a text are assigned a special character to create a dictionary which ChatGPT will use to decode messages, this allows for more characters to be put in a single message
 const specialCharacters = [
@@ -26,6 +68,21 @@ let MESSAGES = localStorage.getItem("summariser-extension-messages")
     ));
     return JSON.parse(localStorage.getItem("summariser-extension-messages"));
   })();
+
+function waitForElement(selector) {
+  return new Promise((resolve, reject) => {
+    const checkInterval = setInterval(() => {
+      if (document.querySelector(selector)) {
+        resolve();
+      }
+    }, 500);
+
+    setTimeout(() => { // longer than 60 seconds => cloudflare gave captcha
+      clearInterval(checkInterval);
+      reject();
+    }, 60000);
+  });
+}
 
 // gets the video watch id from the url
 function getVideoId(url) {
@@ -81,6 +138,48 @@ browser.runtime.onMessage.addListener((message) => {
   }
 });
 
+function lightThemeSVG() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.className = "light-theme-svg";
+  svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  svg.setAttribute("viewBox", "0 0 512 512");
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M505.2 324.8l-47.73-68.78l47.75-68.81c7.359-10.62 8.797-24.12 3.844-36.06c-4.969-11.94-15.52-20.44-28.22-22.72l-82.39-14.88l-14.89-82.41c-2.281-12.72-10.76-23.25-22.69-28.22c-11.97-4.936-25.42-3.498-36.12 3.844L256 54.49L187.2 6.709C176.5-.6016 163.1-2.039 151.1 2.896c-11.92 4.971-20.4 15.5-22.7 28.19l-14.89 82.44L31.15 128.4C18.42 130.7 7.854 139.2 2.9 151.2C-2.051 163.1-.5996 176.6 6.775 187.2l47.73 68.78l-47.75 68.81c-7.359 10.62-8.795 24.12-3.844 36.06c4.969 11.94 15.52 20.44 28.22 22.72l82.39 14.88l14.89 82.41c2.297 12.72 10.78 23.25 22.7 28.22c11.95 4.906 25.44 3.531 36.09-3.844L256 457.5l68.83 47.78C331.3 509.7 338.8 512 346.3 512c4.906 0 9.859-.9687 14.56-2.906c11.92-4.969 20.4-15.5 22.7-28.19l14.89-82.44l82.37-14.88c12.73-2.281 23.3-10.78 28.25-22.75C514.1 348.9 512.6 335.4 505.2 324.8zM456.8 339.2l-99.61 18l-18 99.63L256 399.1L172.8 456.8l-18-99.63l-99.61-18L112.9 255.1L55.23 172.8l99.61-18l18-99.63L256 112.9l83.15-57.75l18.02 99.66l99.61 18L399.1 255.1L456.8 339.2zM256 143.1c-61.85 0-111.1 50.14-111.1 111.1c0 61.85 50.15 111.1 111.1 111.1s111.1-50.14 111.1-111.1C367.1 194.1 317.8 143.1 256 143.1zM256 319.1c-35.28 0-63.99-28.71-63.99-63.99S220.7 192 256 192s63.99 28.71 63.99 63.1S291.3 319.1 256 319.1z");
+
+  svg.appendChild(path);
+
+  return svg;
+}
+
+{/* <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.2.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc. --><path d="M421.6 379.9c-.6641 0-1.35 .0625-2.049 .1953c-11.24 2.143-22.37 3.17-33.32 3.17c-94.81 0-174.1-77.14-174.1-175.5c0-63.19 33.79-121.3 88.73-152.6c8.467-4.812 6.339-17.66-3.279-19.44c-11.2-2.078-29.53-3.746-40.9-3.746C132.3 31.1 32 132.2 32 256c0 123.6 100.1 224 223.8 224c69.04 0 132.1-31.45 173.8-82.93C435.3 389.1 429.1 379.9 421.6 379.9zM255.8 432C158.9 432 80 353 80 256c0-76.32 48.77-141.4 116.7-165.8C175.2 125 163.2 165.6 163.2 207.8c0 99.44 65.13 183.9 154.9 212.8C298.5 428.1 277.4 432 255.8 432z"/></svg> */}
+function darkThemeSVG() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.className = "dark-theme-svg";
+  svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  svg.setAttribute("viewBox", "0 0 512 512");
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M421.6 379.9c-.6641 0-1.35 .0625-2.049 .1953c-11.24 2.143-22.37 3.17-33.32 3.17c-94.81 0-174.1-77.14-174.1-175.5c0-63.19 33.79-121.3 88.73-152.6c8.467-4.812 6.339-17.66-3.279-19.44c-11.2-2.078-29.53-3.746-40.9-3.746C132.3 31.1 32 132.2 32 256c0 123.6 100.1 224 223.8 224c69.04 0 132.1-31.45 173.8-82.93C435.3 389.1 429.1 379.9 421.6 379.9zM255.8 432C158.9 432 80 353 80 256c0-76.32 48.77-141.4 116.7-165.8C175.2 125 163.2 165.6 163.2 207.8c0 99.44 65.13 183.9 154.9 212.8C298.5 428.1 277.4 432 255.8 432z");
+
+  svg.appendChild(path);
+
+  return svg;
+}
+
+function settingsCogSvg() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  svg.setAttribute("viewBox", "0 0 512 512");
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", "M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336c44.2 0 80-35.8 80-80s-35.8-80-80-80s-80 35.8-80 80s35.8 80 80 80z");
+
+  svg.appendChild(path);
+
+  return svg;
+}
+
 // arrow svg for the enter button
 function arrowSvg() {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -105,6 +204,7 @@ function loadingDots() {
   const dots = document.createElement("h1");
   dots.className = "loading-dots";
   dots.innerHTML = "."
+
   return dots;
 }
 
@@ -136,6 +236,13 @@ function Icon(type) {
 
     return div;
   } else {
+    if (PFP) {
+      const pfp = document.createElement("img");
+      pfp.src = PFP;
+      pfp.className = "user-icon";
+      return pfp;
+    }
+
     const div = document.createElement("div");
     div.className = "user-icon";
 
@@ -393,19 +500,32 @@ function newMessage(type, text) {
 
 // updates the messages visible in the .info-div
 // clears the div and adds the messages back
-// [FIX]: no need to remove entire html and re-add
 function updateMessages() {
   const infoDiv = document.querySelector(".info-div");
-  infoDiv.innerHTML = "";
+
+  const childDiv = infoDiv.querySelector('.lower-div');
+
+  for (var i = 0; i < infoDiv.children.length; i++) {
+    if (infoDiv.children[i] !== childDiv) {
+      infoDiv.removeChild(infoDiv.children[i]);
+      i--;
+    }
+  }
+
+
   for (let i = 0; i < MESSAGES.length; i++) {
     const message = MESSAGES[i]
 
+    if (message.type === "summary" && message.custom_type !== "summary-text") continue;
+
     const messageDiv = newMessage(message.from, message.message);
-    infoDiv.appendChild(messageDiv);
+    infoDiv.insertBefore(messageDiv, childDiv);
   }
 }
 
-window.requestIdleCallback(() => { setTimeout(init, 3000) });
+waitForElement("#above-the-fold > #title").then(() => {
+  init();
+})
 
 function init() {
   const buttons = document.querySelectorAll(".summary-toggle-button");
@@ -510,8 +630,76 @@ function findMostAreaWords(text) {
   return results;
 }
 
+async function updateAccessToken() {
+  browser.runtime.sendMessage({ type: 'openTab' }); // sends a message to the background to open a new tab at https://chat.openai.com/chat, background script handles getting the access token and sends it back
+  
+  // creates a self-removing listener which removes itself after the first message it recieves to avoid stacking
+  async function addMessageListener() {
+    const listener = async (request, sender, sendResponse) => {
+      if (request.accessToken) {
+        console.log(request.accessToken);
+        ACCESS_TOKEN = "Bearer " + request.accessToken;
+        PFP = request.pfp;
+        await browser.runtime.onMessage.removeListener(listener);  // remove the listener after it has received the access token
+        localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN); // set accesstoken in localstroage
+        localStorage.setItem("summariser-extension-pfp", PFP)
+        return "Updated access token."
+      }
+    }
+    browser.runtime.onMessage.addListener(listener);
+  }
+
+  // handles the response to the "openTab" message, the response has the accessToken
+  await addMessageListener();
+
+  return ACCESS_TOKEN;
+}
+
+async function handleCloudflareCheck() {
+  browser.runtime.sendMessage({ type: 'cloudflare' }); // sends a message to the background to open a new tab at https://chat.openai.com/chat, background script handles getting the access token and sends it back
+  console.log("sent")
+  // create a promise that resolves or rejects based on the response to the "cloudflare" message
+  return new Promise((resolve, reject) => {
+    const listener = (request, sender, sendResponse) => {
+      if (request.cloudflare) {
+        browser.runtime.onMessage.removeListener(listener);  // remove the listener after it has received the response
+        if (request.cloudflare === "successful") {
+          resolve("successful");
+        } else {
+          reject("unsuccessful");
+        }
+      }
+    }
+    browser.runtime.onMessage.addListener(listener);
+  });
+}
+
+async function makeApiCall(ACCESS_TOKEN, body) {
+  // calls api point with appropriate body to start a new conversation
+  try {
+    const response = await fetch("https://chat.openai.com/backend-api/conversation", {
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        "Accept": "text/event-stream",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Content-Type": "application/json",
+        "Authorization": ACCESS_TOKEN,
+      },
+      "body": JSON.stringify(body),
+      "method": "POST",
+    });
+    return response;
+  }
+  catch (error) {
+    return null;
+  }
+}
+
 // starts new conversation with ChatGPT
-async function startNewConversation(initialMessage) {
+async function startNewConversation(initialMessage, type, custom_assistant_type) {
+  type = type || "normal"; // if normal then shows up on .info-div otherwise doesn't show up
+  custom_assistant_type = custom_assistant_type || ""; // if ChatGPT sends summary then should show
+  console.log(type);
   const id = generateFormattedString(); // generates a random 28 char + 4 dashes string
   const parent_id = generateFormattedString();
 
@@ -525,6 +713,8 @@ async function startNewConversation(initialMessage) {
     "message_id": id,
     "parent_message_id": parent_id,
     "conversation_id": null,
+    "type": type,
+    "custom_type": "",
   })
 
   // add new message from ChatGPT to array
@@ -535,35 +725,36 @@ async function startNewConversation(initialMessage) {
       "message": "",
       "message_id": "",
       "conversation_id": "",
+      "type": type,
+      "custom_type": custom_assistant_type,
     })
 
   updateMessages(); // update messages in .info-div to show the user their queries are being processed.
 
-  // calls api point with appropriate body to start a new conversation
-  const response = await fetch("https://chat.openai.com/backend-api/conversation", {
-    "headers": {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-      "Accept": "text/event-stream",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Content-Type": "application/json",
-      "Authorization": ACCESS_TOKEN,
-    },
-    "body": JSON.stringify(body),
-    "method": "POST",
-  });
+  const response = await makeApiCall(ACCESS_TOKEN, body)
+  const multiUtilButton = document.querySelector("[class^='multi-util']");
 
-  console.log(body);
   console.log(response);
 
-  if (await response.statusText === "Internal Server Error") {
-    MESSAGES = []
-    return startNewConversation(initialMessage);
+  if (!response) {
+    multiUtilButton.className = "multi-util-oauth"
+    multiUtilButton.textContent = "Network error ocurred, please refresh and try again.";
+    return;
   }
 
-  // response returned if not ok to be processed by the handleError and to retry
   if (await response.ok === false) {
     return response
   }
+  
+  console.log(response);
+
+  /*
+    OK = Good
+    Forbidden = Cloudflare
+    Unauthorized = Invalid access token
+    Too Many Requests = Timed out
+    Internal Server Error = Unknown
+  */
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
@@ -597,7 +788,9 @@ async function startNewConversation(initialMessage) {
         "from": response_role,
         "message": response_message,
         "message_id": response_message_id,
-        "conversation_id": response_conversation_id
+        "conversation_id": response_conversation_id,
+        "type": type,
+        "custom_type": custom_assistant_type,
       }
 
       updateMessages(); // updates messages seen in the .info-div
@@ -606,11 +799,14 @@ async function startNewConversation(initialMessage) {
     }
   }
 
-  return { response, id, parent_id }; // arbitrary return data
+  return response;
 }
 
 // continues existing conversation with ChatGPT
-async function continueConversation(message) {
+async function continueConversation(message, type, custom_assistant_type) {
+  type = type || "normal";
+  custom_assistant_type = custom_assistant_type || ""; // if ChatGPT sends summary then should show
+  console.log(type);
   const id = generateFormattedString();
   let last_user_message = MESSAGES[MESSAGES.length - 2];
   let last_assistant_message = MESSAGES[MESSAGES.length - 1];
@@ -624,7 +820,9 @@ async function continueConversation(message) {
     "message": message,
     "message_id": id,
     "parent_message_id": last_user_message.message_id,
-    "conversation_id": conversation_id
+    "conversation_id": conversation_id,
+    "type": type,
+    "custom_type": "",
   });
 
   // pushes blank message from ChatGPT to be updated later when response is given
@@ -634,24 +832,25 @@ async function continueConversation(message) {
       "message": "",
       "message_id": "",
       "conversation_id": conversation_id,
+      "type": type,
+      "custom_type": custom_assistant_type,
     })
 
   updateMessages(); // updates the messages displayed to the user in the .info-div
 
-  // calls api point with appropriate body to continue conversation rather than starting a new one
-  const response = await fetch("https://chat.openai.com/backend-api/conversation", {
-    "headers": {
-      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
-      "Accept": "text/event-stream",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Content-Type": "application/json",
-      "Authorization": ACCESS_TOKEN,
-    },
-    "body": JSON.stringify(body),
-    "method": "POST",
-  });
+  const response = await makeApiCall(ACCESS_TOKEN, body)
+  const multiUtilButton = document.querySelector("[class^='multi-util']");
 
-  // if response not ok then return the response so it can be handled by the handleError and so that the request can be retried
+  console.log(body);
+  console.log(ACCESS_TOKEN);
+  console.log(response);
+
+  if (!response) {
+    multiUtilButton.className = "multi-util-oauth"
+    multiUtilButton.textContent = "Network error ocurred, please refresh and try again.";
+    return;
+  }
+
   if (await response.ok === false) {
     return response
   }
@@ -689,6 +888,8 @@ async function continueConversation(message) {
         "message": response_message,
         "message_id": response_message_id,
         "conversation_id": conversation_id,
+        "type": type,
+        "custom_type": custom_assistant_type,
       }
 
       updateMessages(); // updates the messages as seen on .info-div
@@ -697,116 +898,15 @@ async function continueConversation(message) {
     }
   }
 
-  return { response }; // arbitrary return data
-}
-
-// handles if the response from calling ChatGPT api point is not ok
-function handleError(statusText) {
-  const multiUtilButton = document.querySelector("[class^='multi-util']");
-
-  if (statusText === "Forbidden") {
-    // Cloudflare check
-    multiUtilButton.className = "multi-util-cloudflare";
-    multiUtilButton.textContent = "Cloudflare check. Click to verify & retry.";
-  } else if (statusText === "Unauthorized") {
-    // Expired Auth
-    multiUtilButton.className = "multi-util-oauth"
-    multiUtilButton.textContent = "OAuth Expired. Click to refresh oauth & retry.";
-  } else if (statusText === "Too Many Requests") {
-    // ChatGPT cooldown
-    multiUtilButton.className = "multi-util-cooldown"
-    multiUtilButton.textContent = "Cooldown. ChatGPT has rate limited you. Switch Account or wait 1 hour. Your oauth has been reset for you.";
-    localStorage.removeItem("summariser-extension-access-token")
-    multiUtilButton.disabled = true;
-  }
-}
-
-// handles if an error occurs when the user first clicks the summarize button
-async function handleChunks(chunks, type) {
-
-  function retryListener() { // listens for a retry message from the background script which is called when errors such as invalid auth token are overcome
-    const listener = (request, sender, sendResponse) => {
-      if (request.type === "retry") {
-        handleChunks(chunks, "retry"); // recalls itself when retry message recieved
-        browser.runtime.onMessage.removeListener(listener); // removes itself after first message to avoid stacking
-      }
-    }
-    browser.runtime.onMessage.addListener(listener);
-  }
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i]
-    await new Promise(resolve => setTimeout(resolve, 250)); // small delay
-    if (i === 0) {
-      // first chunk so need to use startNewConversation function
-      conversation = await startNewConversation(chunk);
-
-      // accounting for strange behavior
-      if (await conversation.statusText === "Too Many Requests" && type === "retry") {
-        const multiUtilButton = document.querySelector("[class^='multi-util']");
-        multiUtilButton.className = "multi-util-button"
-        multiUtilButton.textContent = "Refreshed Successfully!";
-      }else {
-        handleError(await conversation.statusText); // handle error if any
-      }
-
-      // wait for retry if not ok
-      if (await conversation.ok === false) {
-        retryListener(chunks);
-      } else {
-
-      }
-    } else {
-      // continue the conversation
-      conversation = await continueConversation(chunk);
-
-      // accounting for strange behavior
-      if (await conversation.statusText === "Too Many Requests" && type === "retry") {
-        const multiUtilButton = document.querySelector("[class^='multi-util']");
-        multiUtilButton.className = "multi-util-button"
-        multiUtilButton.textContent = "Refreshed Successfully!";
-      }else {
-        handleError(await conversation.statusText); // handle error if any
-      }
-
-      // wait for retry if not ok
-      if (await conversation.ok === false) {
-        retryListener(chunks);
-      } else {
-
-      }
-    }
-  }
+  return response ; // arbitrary return data
 }
 
 let apiKey;
 let params;
 
-function Button() {
-  let isTranscriptAvailable = false;
-
-  let buttons = document.querySelectorAll("button, [type='button'], input[type='button']");
-
-  // checks if transcript is available by searching for specific attribute values
-  for (let i = 0; i < buttons.length; i++) {
-    let button = buttons[i];
-    if (button.getAttribute("aria-label") === "Close transcript") {
-      isTranscriptAvailable = true;
-    }
-  }
-
-  const button = document.createElement("button");
-  let summarizeDisabled = false; // used to stop users from repeatedly clicking the summarize button with effect other than to toggle open and close
-
-  button.innerHTML = isTranscriptAvailable ? BUTTON_TEXT : "Not available";
-  button.className = "summary-toggle-button";
-
-  if (!isTranscriptAvailable) {
-    return button;
-  }
-
+// sets apiKey & params
+function setCredentials() {
   const scriptTags = document.querySelectorAll('script');
-
   // searches for the script tag with needed data to set the apiKey and params variables
   for (const scriptTag of scriptTags) {
     // gets and sets the "params" which is needed as part of the body for the post request to get the transcript of the youtube video 
@@ -823,102 +923,93 @@ function Button() {
       apiKey = JSON.parse(match[1]).INNERTUBE_API_KEY; // set api key
     }
   }
+}
+
+function isTranscriptAvailable() {
+  let available = false;
+
+  let buttons = document.querySelectorAll("button, [type='button'], input[type='button']");
+
+  // checks if transcript is available by searching for specific attribute values
+  for (let i = 0; i < buttons.length; i++) {
+    let button = buttons[i];
+    if (button.getAttribute("aria-label") === "Close transcript") {
+      available = true;
+    }
+  }
+
+  return available;
+}
+
+async function getVideoTranscript(apiKey, params) {
+  const r = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
+    "body": JSON.stringify({
+      "context": {
+        "client": {
+          "clientName": "WEB",
+          "clientVersion": "2.20221220.09.00",
+          "utcOffsetMinutes": 0,
+        }
+      },
+      "params": params
+    }),
+    "method": "POST"
+  });
+
+  const json = await r.json();
+  
+  // all of the transcript lines
+  const initialSegments =
+    json.actions[0].updateEngagementPanelAction.content.transcriptRenderer
+      .content.transcriptSearchPanelRenderer.body.transcriptSegmentListRenderer
+      .initialSegments;
+
+  let transcription = ""; // stores the entire transcription
+
+  // combines all lines from the intialSegments to form one giant transcript
+  for (let segment of initialSegments) {
+    transcription += segment.transcriptSegmentRenderer.startTimeText.simpleText + " " +
+      segment.transcriptSegmentRenderer.snippet.runs[0].text + " ";
+  }
+
+  return transcription;
+}
+
+function Button() {
+  let transcriptAvailable = isTranscriptAvailable();
+
+  const button = document.createElement("button");
+  let hasAlreadySummarized = false; // used to stop users from repeatedly clicking the summarize button with effect other than to toggle open and close
+
+  button.innerHTML = transcriptAvailable ? BUTTON_TEXT : "Not available";
+  button.className = "summary-toggle-button";
+
+  if (!transcriptAvailable) {
+    return button;
+  }
+
+  setCredentials(); // sets apiKey and params
 
   button.addEventListener("click", async (event) => {
     const extension = document.querySelector(".summariser-extension");
     extension.style.display === "none" ? extension.style.display = "flex" : extension.style.display = "none";
 
     // if hasn't already summarized
-    if (summarizeDisabled === false) {
-      const r = await fetch(`https://www.youtube.com/youtubei/v1/get_transcript?key=${apiKey}&prettyPrint=false`, {
-        "body": JSON.stringify({
-          "context": {
-            "client": {
-              "clientName": "WEB",
-              "clientVersion": "2.20221220.09.00",
-              "utcOffsetMinutes": 0,
-            }
-          },
-          "params": params
-        }),
-        "method": "POST"
-      });
+    if (hasAlreadySummarized === false) {
+      const VIDEO_NAME = document.querySelector("h1.ytd-watch-metadata > yt-formatted-string:nth-child(1)").innerText;
+      const VIDEO_LENGTH = document.querySelector(".ytp-time-duration").textContent;
 
-      const json = await r.json();
+      // the initial prompt to be included with the summary, it tells ChatGPT how to interpret the message
+      const prompt = `EACH TRANSCRIPT LINE HAS A TIMESTAMP PRECEDING IT. You are a highly proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}" and is ${VIDEO_LENGTH} long. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
 
-      let chunks = [];
+      let transcription = await getVideoTranscript(apiKey, params);
+      let summarisePrompt = `VIDEO LENGTH = ${VIDEO_LENGTH}. DO NOT FORGET THIS TRANSCRIPT I HAVE GIVEN YOU CONSIDER THE TRANSCRIPT IF YOU ARE UNSURE OF WHAT I AM ASKING YOU FOR. Whenever i talk about a "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. As a part of your roleplay you must give the best most high quality summary imaginable of the video transcript using chapters and bullet points. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you .` // [DELETED PROMPTS DUE TO DISABLED ENCODING]: ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}. ALSO TRANSLATE ENCODED MESSAGES BACK TO READABLE TEXT WHEN REPLYING
 
-      // all of the transcript lines
-      const initialSegments =
-        json.actions[0].updateEngagementPanelAction.content.transcriptRenderer
-          .content.transcriptSearchPanelRenderer.body.transcriptSegmentListRenderer
-          .initialSegments;
-
-      let transcription = ""; // stores the entire transcription
-
-      // combines all lines from the intialSegments to form one giant transcript
-      for (let segment of initialSegments) {
-        transcription += segment.transcriptSegmentRenderer.startTimeText.simpleText + " " +
-          segment.transcriptSegmentRenderer.snippet.runs[0].text + " ";
-      }
-
-      console.log(transcription);
-
-      // splits transcript into chunks according to the CHUNK_SIZE constant which is 16000 characters
-      let start = 0;
-      let count = 0;
-      let isFirstMessage = true;
-      let summarisePrompt;
-
-      // forming the message(s) to send to ChatGPT 
-      while (start < transcription.length) {
-        const VIDEO_NAME = document.querySelector("h1.ytd-watch-metadata > yt-formatted-string:nth-child(1)").innerText;
-        const VIDEO_DATE = "";
-        const VIDEO_DESCRIPTION = "";
-        const OTHER_CONTEXT = "";
-
-        // the initial prompt to be included with the summary
-        // it tells ChatGPT how to interpret the message
-        const prompt = `EACH TRANSCRIPT LINE HAS A TIMESTAMP PRECEDING IT. You are a highly proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}" and is ${document.querySelector(".ytp-time-duration").textContent} long. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
-
-        // [FIX]: add a preferred level of detail setting
-
-        // need to make first chunk smaller due to the prompt text length
-        const difference = isFirstMessage ? CHUNK_SIZE - (prompt.length + 100) : CHUNK_SIZE
-
-        let chunk = transcription.slice(start, start + difference);
-        chunk = chunk.replace(/\[Music\]/g, "");
-        chunk = chunk.replace(/\[ __ \]/g, "!!!");
-        count += 1;
-        let modification = replaceWords(
-          `REPLY WITH "UNDERSTOOD." TRANSCRIPT YOUTUBE VIDEO PART ${count}: READ CAREFULLY AND REMEMBER FULLY: ${chunk}`
-        );
-        // chunk = modification.modifiedText;
-        chunk = chunk.replace(/\s+/g, " ");
-        const final = `${prompt} TRANSCRIPT PART 1: ${chunk}`;
-
-        // this prompt is sent to ChatGPT to intialise the summary after all of the transcript parts have been given
-        summarisePrompt = `whenever i talk about a "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. As a part of your roleplay you must give the best most high quality summary imaginable of the video transcript using chapters and bullet points. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you . ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}.`
-
-        if (isFirstMessage) {
-          isFirstMessage = false;
-          chunks.push(final);
-          start += difference;
-        } else {
-          chunks.push(chunk);
-          start += difference;
-        }
-
-        console.log(chunk);
-      }
-
-      chunks.push(summarisePrompt);
-
-      handleChunks(chunks);
+      sendmessageToChatGPT(transcription, "summary", ENCODING, prompt, summarisePrompt)
     }
 
     // once summary is given the summarize button should not give another summary if clicked, it should only toggle the extension's visibility
-    summarizeDisabled = true;
+    hasAlreadySummarized = true;
   });
 
   return button
@@ -966,7 +1057,41 @@ function ToolBar() {
 
   const settings = document.createElement("button");
   settings.className = "settings-button";
-  settings.disabled = true;
+  settings.appendChild(settingsCogSvg());
+
+  settings.addEventListener("click", (event) => {
+    event.preventDefault();
+  })
+
+  const themeButton = document.createElement("button");
+  themeButton.className = "theme-button";
+
+  const darkColorScheme = window.matchMedia("(prefers-color-scheme: dark)");
+  themeButton.appendChild(darkColorScheme.matches ? lightSvg : darkSvg);
+  
+  themeButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (document.body.classList.contains("light-theme")) {
+      document.body.classList.remove("light-theme");
+      document.body.classList.add("dark-theme");
+
+      if (themeButton.querySelector("svg")) {
+        themeButton.removeChild(themeButton.querySelector("svg"))
+      }
+
+      themeButton.appendChild(lightSvg);
+      setDarkThemeRoot();
+    } else if (document.body.classList.contains("dark-theme")) {
+      document.body.classList.remove("dark-theme");
+      document.body.classList.add("light-theme");
+      if (themeButton.querySelector("svg")) {
+        themeButton.removeChild(themeButton.querySelector("svg"))
+      }
+      
+      themeButton.appendChild(darkSvg);
+      setLightThemeRoot();
+    }
+  });
 
   const status = MultiUtilButton();
 
@@ -980,7 +1105,6 @@ function ToolBar() {
         if (request.accessToken) {
           ACCESS_TOKEN = "Bearer " + request.accessToken;
           browser.runtime.onMessage.removeListener(listener);  // remove the listener after it has received the access token
-          browser.runtime.sendMessage({ type: 'send-retry' }); // now that the access token has been updated a message is sent to retry whatever was the previous request
           localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN); // set accesstoken in localstroage
 
           const multiUtilButton = document.querySelector("[class^='multi-util']");
@@ -1003,13 +1127,172 @@ function ToolBar() {
 
   container.appendChild(status);
   container.appendChild(settings);
+  container.appendChild(themeButton);
 
   return container;
 }
 
+let loadingDotsInterval;
+
+function updateEnterButton(update) {
+  const enterButton = document.querySelector(".enter-button");
+  enterButton.innerHTML = "";
+
+  if (update === "loaded") {
+    enterButton.disabled = false;
+    enterButton.appendChild(arrowSvg());
+    clearInterval(loadingDotsInterval);
+    return;
+  }
+
+  if (update === "loading") {
+    enterButton.disabled = true;
+    const dots = loadingDots();
+    enterButton.appendChild(dots);
+    loadingDotsInterval = setInterval(() => {
+      if (dots.innerHTML === "...") {
+        dots.innerHTML = "";
+      }
+      dots.innerHTML += ".";
+    }, 500);
+  }
+}
+
+async function handleError(statusText) {
+  const multiUtilButton = document.querySelector("[class^='multi-util']");
+
+  let shouldRetry = false;
+
+  // handle errors
+  if (statusText === "Unauthorized") {
+    // Update access token and try again
+    ACCESS_TOKEN = await updateAccessToken();
+      
+    multiUtilButton.className = "multi-util-button"
+    multiUtilButton.textContent = "Refreshed Successfully! Retrying previous request in 2 seconds.";
+
+    await new Promise(resolve => setTimeout(resolve, 2000)); // small delay
+    shouldRetry = true;
+  }
+  else if (statusText === "Forbidden") { // sometimes also because unauthorized
+    // ACCESS_TOKEN = await updateAccessToken();
+    
+    multiUtilButton.className = "multi-util-cloudflare"
+    multiUtilButton.textContent = "Cloudflare check required. Handling.";
+
+    try {
+      const cloudflareStatus = await handleCloudflareCheck();
+      multiUtilButton.className = "multi-util-button"
+      multiUtilButton.textContent = "Refreshed Successfully! Retrying previous request in 2 seconds.";
+      shouldRetry = true;
+    } catch (error) {
+      multiUtilButton.className = "multi-util-setup"
+      multiUtilButton.textContent = "Likely captcha requires solving, please solve then come back.";
+      shouldRetry = false;
+    }
+
+  } else if (statusText === "Too Many Requests") {
+    multiUtilButton.className = "multi-util-cooldown"
+    multiUtilButton.textContent = "Rate limited by ChatGPT. Reset your details for you.";
+    localStorage.setItem("summariser-extension-access-token", "Bearer none");
+    localStorage.setItem("summariser-extension-pfp", "");
+    shouldRetry = false;
+  } else if (statusText === "Internal Server Error") {
+    multiUtilButton.className = "multi-util-setup"
+    multiUtilButton.textContent = "Unknown error occurred. Retrying.";
+
+    shouldRetry = true;
+  }
+
+  return shouldRetry;
+}
+
+async function sendmessageToChatGPT(message, messageType = "normal", encodingEnabled = false, prompt = "", summarisePrompt = "") {
+  updateEnterButton("loading");
+  
+  let chunks = [];
+  let start = 0;
+  let count = 0;
+
+  const splitMessageIntoChunks = (message, chunkSize) => {
+    while (start < message.length) {
+      const chunk = message.slice(start, start + chunkSize);
+      chunks.push(chunk);
+      start += chunkSize;
+    }
+  };
+
+  switch (messageType) {
+    case "summary":
+      splitMessageIntoChunks(message, count === 0 ? CHUNK_SIZE - (prompt.length + 100) : CHUNK_SIZE);
+      chunks = chunks.map(chunk => chunk.replace(/\[Music\]/g, "").replace(/\s+/g, " "));
+      chunks = chunks.map((chunk, index) => {
+        if (encodingEnabled) {
+          return replaceWords(`REPLY WITH "UNDERSTOOD." TRANSCRIPT YOUTUBE VIDEO PART ${index + 1}: READ CAREFULLY AND REMEMBER FULLY: ${chunk}`).modifiedText;
+        }
+        return index === 0 ? `${prompt} TRANSCRIPT PART 1: ${chunk}` : `TRANSCRIPT YOUTUBE VIDEO PART ${index + 1}: ${chunk}`;
+      });
+      chunks.push(summarisePrompt);
+      break;
+    case "normal":
+      splitMessageIntoChunks(message, CHUNK_SIZE);
+      break;
+  }
+
+  let i = 0;
+  while (i < chunks.length) {
+    const chunk = chunks[i];
+    let type;
+    if (!conversation) {
+      type = "start";
+      conversation = await startNewConversation(chunk, messageType, i === chunks.length - 1 ? "summary-text" : "");
+    } else {
+      type = "continue";
+      conversation = await continueConversation(chunk, messageType, i === chunks.length - 1 ? "summary-text" : "");
+    }
+  
+    if (await conversation.ok === false) {
+      const shouldRetry = await handleError(await conversation.statusText);
+      const multiUtilButton = document.querySelector("[class^='multi-util']");
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      multiUtilButton.className = "multi-util-hidden"
+      multiUtilButton.textContent = "";
+
+      if (shouldRetry) {
+        if (type === "start") {
+          conversation = null;
+          MESSAGES = []
+          updateMessages();
+        } else if (type === "continue") {
+          MESSAGES.splice(-2);
+          updateMessages();
+        }
+        continue;
+      }
+    }
+  
+    i += 1;
+  }
+
+  updateEnterButton("loaded");
+  
+}
+
+let autoScroll = true
+let oldScrollY = infoDiv.scrollY;
+let timeoutId;
+
+const debounce = (fn, delay) => {
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
+  timeoutId = setTimeout(fn, delay);
+};
+
 // the gui for ChatGPT
 function Extension() {
-  let isLoading = false;
   const extension = document.createElement("div");
   extension.className = "summariser-extension";
   extension.style.display = "none";
@@ -1020,41 +1303,34 @@ function Extension() {
   const infoDiv = document.createElement("div"); // where all the messages are shown
   infoDiv.className = "info-div";
 
+  const lowerDiv = document.createElement("div");
+  lowerDiv.className = "lower-div";
+  
+  infoDiv.appendChild(lowerDiv)
+
   infoDivContainer.appendChild(infoDiv);
-  let isAtBottom = true; // auto scrolls when first becomes scrollable
 
-  extension.style.height = "auto";
+  function scrollToBottom() {
+    if (autoScroll) {
+      infoDiv.scrollTop = (infoDiv.scrollHeight - infoDiv.clientHeight);
+    }
+    requestAnimationFrame(scrollToBottom);
+  }
+  
+  scrollToBottom();
 
-  infoDiv.addEventListener('scroll', () => {
-    // [FIX]: not a smooth feel when scrolling up from the bottom
-    isAtBottom = infoDiv.scrollTop >= (infoDiv.scrollHeight - infoDiv.clientHeight) - 80;
-  });
-
-  function smoothScrollToBottom() {
-    // get the current scroll position and the distance to the bottom
-    const currentScrollPos = infoDiv.scrollTop;
-    const distanceToBottom = infoDiv.scrollHeight - infoDiv.clientHeight - currentScrollPos;
-
-    // calculate the duration of the scroll animation based on the distance
-    const scrollDuration = Math.abs(distanceToBottom) * 0.05; // 0.05 is the scroll speed
-
-    // scroll to the bottom using an animation
-    infoDiv.scrollTo({
-      top: infoDiv.scrollHeight - infoDiv.clientHeight,
-      behavior: 'smooth',
-    });
-
-    // set a timeout to reset the isAtBottom flag after the animation is complete
-    setTimeout(() => {
-      isAtBottom = true;
-    }, scrollDuration);
+  infoDiv.onscroll = function(e) {
+    if(oldScrollY < window.scrollY){
+      if (infoDiv.scrollTop !== 0) {
+        autoScroll = false;
+      }
+    } else {
+      autoScroll = infoDiv.scrollTop >= (infoDiv.scrollHeight - infoDiv.clientHeight) - 60
+    }
+    oldScrollY = infoDiv.scrollY;
   }
 
-  setInterval(() => {
-    if (isAtBottom) {
-      smoothScrollToBottom();
-    }
-  }, 50);
+  extension.style.height = "auto";
 
   const inputFormContainer = document.createElement("div");
   inputFormContainer.className = "input-form-container";
@@ -1067,27 +1343,20 @@ function Extension() {
 
   const textarea = document.createElement("textarea");
   textarea.rows = 1;
+  
+  const playerElement = document.querySelector("#ytd-player");
+  let playerHeight = parseInt(getComputedStyle(playerElement).height);
 
   // set initial heights
-  infoDivContainer.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`;
-  inputFormContainer.style.height = "160px";
+  infoDivContainer.style.height = `${parseInt(getComputedStyle(document.querySelector("#ytd-player")).height) + 160 + "px"}`;
 
   // adjust heights on resize to be consistent with the size of youtube video player
   window.addEventListener('resize', function () {
-    infoDivContainer.style.height = `${getComputedStyle(document.querySelector("#ytd-player")).height}`;
-    inputFormContainer.style.height = "160px";
+    playerHeight = parseInt(getComputedStyle(playerElement).height);
+    infoDivContainer.style.height = `${playerHeight + 160}px`;
   });
 
-  // the next code handles auto scaling of the textarea with the input
-  let timeoutId;
-
-  const debounce = (fn, delay) => {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-    timeoutId = setTimeout(fn, delay);
-  };
-
+  // auto scaling of code with input
   function resizeTextarea() {
     textarea.style.height = "auto";
     textarea.style.height = textarea.scrollHeight + "px";
@@ -1095,107 +1364,56 @@ function Extension() {
       (textareaContainer.offsetHeight - textarea.offsetHeight) / 2 + "px";
   }
 
+  function handleInput(event) {
+    debounce(resizeTextarea, 25);
+  }
+
+  function handleKeydown(event) {
+    resizeTextarea();
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (textarea.value.length < 1 || enterButton.disabled) {
+        return;
+      }
+      handleSubmit(event);
+    }
+  }
+
   // auto-resize textarea on input
-  textarea.addEventListener("input", () => {
-    debounce(resizeTextarea, 25);  // text updates more smoothly
-  });
+  textarea.addEventListener("input", handleInput);
+  textarea.addEventListener("keydown", handleKeydown);
 
   // handle text submit
   function handleSubmit(event) {
-    // self-removing listener to retry handleSubmit once errors are fixed
-    function retryListener(event) {
-      const listener = (request, sender, sendResponse) => {
-        if (request.type === "retry") {
-          handleSubmit(event);
-          browser.runtime.onMessage.removeListener(listener);
-        }
-      }
-      browser.runtime.onMessage.addListener(listener);
-    }
-
     event.preventDefault();
-    textarea.innerHTML = "";
-    enterButton.innerHTML = "";
-    enterButton.disabled = true;
-    const loading = loadingDots();
-    enterButton.appendChild(loading);
-    isLoading = true;
     const input = textarea.value;
+    textarea.value = "";
+
     updateMessages();
-
-    // shows the loading dots while ChatGPT is answering
-    async function updateDiv() {
-      while (isLoading) {
-        if (loading.innerHTML === "...") {
-          loading.innerHTML = ""
-        }
-        loading.innerHTML += "."
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      enterButton.disabled = false;
-      enterButton.innerHTML = ""
-      enterButton.appendChild(arrowSvg());
-    }
-
-    // handles the conversation with ChatGPT
-    async function fetchData() {
-      if (!conversation) {
-        conversation = await startNewConversation(input);
-
-        handleError(await conversation.statusText); // handle error if any
-
-        if (await conversation.ok === false) {
-          retryListener(event); // retries when errors are fixed
-        } else {
-
-        }
-
-      } else {
-        conversation = await continueConversation(input);
-
-        handleError(await conversation.statusText); // handle error if any
-
-        if (await conversation.ok === false) {
-          retryListener(event); // retries when errors are fixed
-        } else {
-
-        }
-      }
-
-      // re-enables ability to communicate with ChatGPT
-      // reverts the loading dots back to the arrow svg
-
-      isLoading = false;
-    }
-
-    updateDiv(); // updates the inner HTML of the div every 0.5 seconds
-    fetchData(); // handles conversation
+    
+    sendmessageToChatGPT(input);
   }
 
   const enterButton = document.createElement("button");
+  enterButton.className = "enter-button";
   enterButton.appendChild(arrowSvg());
 
-  enterButton.addEventListener("click", handleSubmit);
+  enterButton.addEventListener("click", clickHandler);
 
-  enterButton.className = "enter-button";
-
-  textarea.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && isLoading === false) {
-      handleSubmit(event);
-      textarea.value = "";
-      resizeTextarea();
+  function clickHandler(event) {
+    event.preventDefault();
+    if (textarea.value.length < 1 || document.querySelector(".enter-button").disabled) {
+      return;
     }
-  });
+    
+    handleSubmit(event);
+  }
 
   textareaContainer.append(enterButton);
-
   textareaContainer.appendChild(textarea);
-
   inputForm.appendChild(textareaContainer);
   inputForm.appendChild(ToolBar());
-
   inputFormContainer.appendChild(inputForm);
-
   extension.appendChild(infoDivContainer);
   extension.appendChild(inputFormContainer);
   return extension;
