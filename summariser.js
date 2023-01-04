@@ -203,7 +203,7 @@ function arrowSvg() {
 function loadingDots() {
   const dots = document.createElement("h1");
   dots.className = "loading-dots";
-  dots.innerHTML = "."
+  dots.textContent = "."
 
   return dots;
 }
@@ -417,7 +417,7 @@ function formatText(text) {
           if (k === 0) {
             const heading = document.createElement("p");
             heading.className = k === 0 && j === 0 ? "block-text-first" : "block-text";
-            heading.innerHTML = line;
+            heading.textContent = line;
             parent.appendChild(heading);
             continue;
           }
@@ -1136,7 +1136,7 @@ let loadingDotsInterval;
 
 function updateEnterButton(update) {
   const enterButton = document.querySelector(".enter-button");
-  enterButton.innerHTML = "";
+  enterButton.textContent = "";
 
   if (update === "loaded") {
     enterButton.disabled = false;
@@ -1150,8 +1150,8 @@ function updateEnterButton(update) {
     const dots = loadingDots();
     enterButton.appendChild(dots);
     loadingDotsInterval = setInterval(() => {
-      if (dots.innerHTML === "...") {
-        dots.innerHTML = "";
+      if (dots.textContent === "...") {
+        dots.textContent = "";
       }
       dots.innerHTML += ".";
     }, 500);

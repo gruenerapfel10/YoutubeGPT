@@ -13,6 +13,7 @@
     --cloudflare-color: rgba(255, 150, 50);
     --invalid-oauth-color: rgba(255, 0, 50);
     --cooldown-color: rgba(0, 0, 0);
+    --code-color: rgba(0, 0, 0, 0);
 }
 
 :root {
@@ -21,6 +22,20 @@
   --secondary-color: rgba(68, 70, 84);
   --tertiary-color: rgba(68, 70, 84);
   --font-color: rgba(255, 255, 255);
+}
+
+::-webkit-scrollbar {
+  color: green;
+
+}
+
+::-moz-scrollbar {
+  color: green;
+}
+
+::-ms-scrollbar {
+  color: green;
+
 }
 
 .summary-toggle-button {
@@ -81,6 +96,8 @@
   scroll-snap-type: proximity;
   border-radius: 12px;
   border: 2px solid var(--secondary-color);
+  overflow-y: scroll;
+  overflow-y: overlay;
 }
 
 .input-form {
@@ -151,7 +168,7 @@
 .enter-button > svg {
   scale: 1.5;
   background-color: transparent;
-  fill: var(--secondary-color);
+  fill: var(--font-color);
 }
 
 .loading-dots {
@@ -266,7 +283,7 @@
 }
 
 .code-top {
-  background-color: var(--primary-color);
+  background-color: var(--tertiary-color);
   width: 100%;
   height: 48px;
   margin: 0;
@@ -291,8 +308,11 @@
   flex-direction: row;
 }
 
+pre {
+  background-color: var(--code-color);
+}
+
 code {
-  background-color: var(--primary-color);
   width: 100%;
   margin: 0;
   padding: 20px;
@@ -463,7 +483,7 @@ code {
 .settings-button > svg {
   width: 100%;
   height: 100%;
-  fill: rgba(195, 195, 195);
+  fill: var(--primary-color);
   transition: transform 250ms;
 }
 
@@ -490,7 +510,7 @@ code {
 .theme-button > svg {
   width: 100%;
   height: 100%;
-  fill: rgba(195, 195, 195);
+  fill: var(--primary-color);
   transition: transform 250ms;
 }
 
