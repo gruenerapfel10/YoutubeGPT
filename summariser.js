@@ -21,7 +21,7 @@ const lightThemeColors = {
   primaryColor: "rgba(255, 255, 255, 1)",
   primaryColorInvisible: "rgba(255, 255, 255, 0)",
   secondaryColor: "rgba(247, 247, 248, 1)",
-  tertiaryColor: "rgba(247, 247, 248, 1)",
+  tertiaryColor: "rgba(217, 217, 217, 1)",
   fontColor: "rgba(0, 0, 0)",
 }
 
