@@ -968,10 +968,14 @@ async function getVideoTranscript(apiKey, params) {
 
   // combines all lines from the intialSegments to form one giant transcript
   for (let segment of initialSegments) {
-    transcription += segment.transcriptSegmentRenderer.startTimeText.simpleText + " " +
-      segment.transcriptSegmentRenderer.snippet.runs[0].text + " ";
-  }
+    let text = "";
 
+    if(segment.transcriptSegmentRenderer.snippet.runs) {
+      text = segment.transcriptSegmentRenderer.snippet.runs[0].text
+    }
+
+    transcription += segment.transcriptSegmentRenderer.startTimeText.simpleText + " " + text + " ";
+  }
   return transcription;
 }
 
