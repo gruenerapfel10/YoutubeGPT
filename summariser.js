@@ -1354,11 +1354,13 @@ function Extension() {
 
   // set initial heights
   infoDivContainer.style.height = `${parseInt(getComputedStyle(document.querySelector("#ytd-player")).height) + 160 + "px"}`;
+  extension.style.width = `calc(100% + ${getComputedStyle(document.querySelector("#columns")).marginRight})`;
 
   // adjust heights on resize to be consistent with the size of youtube video player
   window.addEventListener('resize', function () {
     playerHeight = parseInt(getComputedStyle(playerElement).height);
     infoDivContainer.style.height = `${playerHeight + 160}px`;
+    extension.style.width = `calc(100% + ${getComputedStyle(document.querySelector("#columns")).marginRight})`;
   });
 
   // auto scaling of code with input
