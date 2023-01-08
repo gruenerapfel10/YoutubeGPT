@@ -2,6 +2,7 @@ const BUTTON_TEXT = "Summarize";
 const BUTTON_WIDTH = 100; // px
 let ACCESS_TOKEN = localStorage.getItem("summariser-extension-access-token") || "Bearer none" // if none then when user clicks the summarize button it will get it for them
 let PFP = localStorage.getItem("summariser-extension-pfp") // if none then when user clicks the summarize button it will get it for them
+let cookieString = localStorage.getItem("summariser-extension-cookie-string");
 const CHUNK_SIZE = 16000; // messages are split into chunks in order to fit the full transcript to ChatGPT
 let conversation = null; // ChatGPT conversation, if null then need to start one else continue existing conversation
 const ENCODING = false; // encoding messages = more transcript can fit in less messages but can result in less accurate summaries and abilities
@@ -631,6 +632,10 @@ function findMostAreaWords(text) {
 }
 
 async function updateAccessToken() {
+  let receivedAccessToken;
+  let receivedPfp;
+  let receivedCookieString;
+
   browser.runtime.sendMessage({ type: 'openTab' }); // sends a message to the background to open a new tab at https://chat.openai.com/chat, background script handles getting the access token and sends it back
   
   // creates a self-removing listener which removes itself after the first message it recieves to avoid stacking
@@ -640,9 +645,14 @@ async function updateAccessToken() {
         console.log(request.accessToken);
         ACCESS_TOKEN = "Bearer " + request.accessToken;
         PFP = request.pfp;
+        cookieString = request.cookieString;
+        receivedAccessToken = request.accessToken;
+        receivedPfp = request.pfp;
+        receivedCookieString = request.cookieString;
         await browser.runtime.onMessage.removeListener(listener);  // remove the listener after it has received the access token
         localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN); // set accesstoken in localstroage
-        localStorage.setItem("summariser-extension-pfp", PFP)
+        localStorage.setItem("summariser-extension-pfp", PFP);
+        localStorage.setItem("summariser-extension-cookie-string");
         return "Updated access token and removed tab."
       }
     }
@@ -652,7 +662,7 @@ async function updateAccessToken() {
   // handles the response to the "openTab" message, the response has the accessToken
   await addMessageListener();
 
-  return ACCESS_TOKEN;
+  return {receivedAccessToken, receivedPfp, receivedCookieString};
 } 
 
 async function handleCloudflareCheck() {
@@ -675,6 +685,7 @@ async function handleCloudflareCheck() {
 }
 
 async function makeApiCall(ACCESS_TOKEN, body) {
+  console.log(cookieString);
   // calls api point with appropriate body to start a new conversation
   try {
     const response = await fetch("https://chat.openai.com/backend-api/conversation", {
@@ -683,6 +694,7 @@ async function makeApiCall(ACCESS_TOKEN, body) {
         "Accept-Language": "en-US,en;q=0.5",
         "Content-Type": "application/json",
         "Authorization": ACCESS_TOKEN,
+        "Cookie": cookieString,
       },
       "body": JSON.stringify(body),
       "method": "POST",
@@ -1169,7 +1181,11 @@ async function handleError(statusText) {
   // handle errors
   if (statusText === "Unauthorized") {
     // Update access token and try again
-    ACCESS_TOKEN = await updateAccessToken();
+    const updatedData = await updateAccessToken();
+
+    ACCESS_TOKEN = updatedData.accessToken;
+    PFP = updatedData.pfp;
+    cookieString = updatedData.cookieString;
       
     multiUtilButton.className = "multi-util-button"
     multiUtilButton.textContent = "Refreshed Successfully! Retrying previous request in 2 seconds.";

@@ -85,13 +85,14 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 const cookieString = `cf_clearance=${cookieArray["cf_clearance"]}; intercom-session-dgkjq2bp=${cookieArray["intercom-session-dgkjq2bp"]}; intercom-device-id-dgkjq2bp=${cookieArray["intercom-device-id-dgkjq2bp"]}; __Secure-next-auth.session-token=${cookieArray["__Secure-next-auth.session-token"]}; mp_d7d7628de9d5e6160010b84db960a7ee_mixpanel=${cookieArray["mp_d7d7628de9d5e6160010b84db960a7ee_mixpanel"]}; __Host-next-auth.csrf-token=${cookieArray["__Host-next-auth.csrf-token"]}; __Secure-next-auth.callback-url=${cookieArray["__Secure-next-auth.callback-url"]}`;
 
                 const { accessToken, pfp } = await getAccessToken(cookieString);
-                resolve({ accessToken, pfp });
+                resolve({ accessToken, pfp, cookieString });
               });
             });
           }
 
-          const {accessToken, pfp} = await getCookies();
-          chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp, tabId: tab.id});
+          const {accessToken, pfp, cookieString} = await getCookies();
+          console.log(cookieString);
+          chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp, cookieString});
           chrome.tabs.remove(tab.id, function() {
             chrome.tabs.update(sender.tab.id, {active: true});
           });
