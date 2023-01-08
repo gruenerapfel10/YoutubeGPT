@@ -679,7 +679,6 @@ async function makeApiCall(ACCESS_TOKEN, body) {
   try {
     const response = await fetch("https://chat.openai.com/backend-api/conversation", {
       "headers": {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:108.0) Gecko/20100101 Firefox/108.0",
         "Accept": "text/event-stream",
         "Accept-Language": "en-US,en;q=0.5",
         "Content-Type": "application/json",
@@ -1180,6 +1179,10 @@ async function handleError(statusText) {
   }
   else if (statusText === "Forbidden") { // sometimes also because unauthorized
     // ACCESS_TOKEN = await updateAccessToken();
+
+    if (!localStorage.getItem("summariser-extension-access-token")) {
+      ACCESS_TOKEN = await updateAccessToken();
+    }
     
     multiUtilButton.className = "multi-util-cloudflare"
     multiUtilButton.textContent = "Cloudflare check required. Handling.";
