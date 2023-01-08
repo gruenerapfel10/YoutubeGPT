@@ -91,7 +91,7 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
           }
 
           const {accessToken, pfp} = await getCookies();
-          chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp});
+          chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp, tabId: tab.id});
           chrome.tabs.remove(tab.id, function() {
             chrome.tabs.update(sender.tab.id, {active: true});
           });

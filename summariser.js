@@ -637,13 +637,16 @@ async function updateAccessToken() {
   async function addMessageListener() {
     const listener = async (request, sender, sendResponse) => {
       if (request.accessToken) {
+        let tabId = request.tabId;
         console.log(request.accessToken);
         ACCESS_TOKEN = "Bearer " + request.accessToken;
         PFP = request.pfp;
         await browser.runtime.onMessage.removeListener(listener);  // remove the listener after it has received the access token
         localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN); // set accesstoken in localstroage
         localStorage.setItem("summariser-extension-pfp", PFP)
-        return "Updated access token."
+        // remove the tab using the tabId
+        browser.tabs.remove(tabId);
+        return "Updated access token and removed tab."
       }
     }
     browser.runtime.onMessage.addListener(listener);
@@ -653,7 +656,7 @@ async function updateAccessToken() {
   await addMessageListener();
 
   return ACCESS_TOKEN;
-}
+} 
 
 async function handleCloudflareCheck() {
   browser.runtime.sendMessage({ type: 'cloudflare' }); // sends a message to the background to open a new tab at https://chat.openai.com/chat, background script handles getting the access token and sends it back
@@ -1178,11 +1181,12 @@ async function handleError(statusText) {
     shouldRetry = true;
   }
   else if (statusText === "Forbidden") { // sometimes also because unauthorized
-    // ACCESS_TOKEN = await updateAccessToken();
+    ACCESS_TOKEN = await updateAccessToken();
 
-    if (!localStorage.getItem("summariser-extension-access-token")) {
-      ACCESS_TOKEN = await updateAccessToken();
-    }
+    // if (!localStorage.getItem("summariser-extension-access-token")) {
+    //   ACCESS_TOKEN = await updateAccessToken();
+    //   localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN);
+    // }
     
     multiUtilButton.className = "multi-util-cloudflare"
     multiUtilButton.textContent = "Cloudflare check required. Handling.";
