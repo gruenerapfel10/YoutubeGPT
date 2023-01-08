@@ -637,15 +637,12 @@ async function updateAccessToken() {
   async function addMessageListener() {
     const listener = async (request, sender, sendResponse) => {
       if (request.accessToken) {
-        let tabId = request.tabId;
         console.log(request.accessToken);
         ACCESS_TOKEN = "Bearer " + request.accessToken;
         PFP = request.pfp;
         await browser.runtime.onMessage.removeListener(listener);  // remove the listener after it has received the access token
         localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN); // set accesstoken in localstroage
         localStorage.setItem("summariser-extension-pfp", PFP)
-        // remove the tab using the tabId
-        browser.tabs.remove(tabId);
         return "Updated access token and removed tab."
       }
     }
