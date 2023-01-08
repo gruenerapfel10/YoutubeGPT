@@ -998,7 +998,7 @@ function Button() {
 
   button.textContent = transcriptAvailable ? BUTTON_TEXT : "Not available";
   button.className = "summary-toggle-button";
-
+  
   if (!transcriptAvailable) {
     return button;
   }
