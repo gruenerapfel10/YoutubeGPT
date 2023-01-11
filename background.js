@@ -14,9 +14,12 @@ const getAccessToken = async (cookieString) => {
     return {error: json.details};
   }
 
+  console.log('returned error')
+
+  return {error: "Rate limit exceeded"};
+
   const accessToken = json.accessToken;
 
-  console.log(json);
   const pfp = json.user.image;
 
   return { accessToken, pfp };
@@ -104,21 +107,13 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
           const {accessToken, pfp, cookieString, error} = await getCookies();
 
-          console.log(cookieString);
+          console.log(error);
 
-          if (error) {
-            chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp, cookieString, error});
-            chrome.tabs.remove(tab.id, function() {
-              chrome.tabs.update(sender.tab.id, {active: true});
-            });
-            return;
-          }
-
-          chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp, cookieString});
+          chrome.tabs.sendMessage(sender.tab.id, {type: "credentials-update", accessToken, pfp, cookieString, error});
           chrome.tabs.remove(tab.id, function() {
-            chrome.tabs.update(sender.tab.id, {active: true});
+          //   chrome.tabs.update(sender.tab.id, {active: true});
           });
-
+          return;
         }
       });
     });

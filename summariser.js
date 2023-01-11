@@ -639,7 +639,7 @@ async function updateAccessToken() {
   // creates a self-removing listener which removes itself after the first message it recieves to avoid stacking
   async function addMessageListener() {
     const listener = async (request, sender, sendResponse) => {
-      if (request.accessToken) {
+      if (request.type === "credentials-update") {
         if (request.error) {
           error = request.error;
           return {error};
@@ -656,11 +656,15 @@ async function updateAccessToken() {
       }
     }
 
-    browser.runtime.onMessage.addListener(listener);
+    browser.runtime.onMessage.addListener(listener, (result) => {
+      console.log(result);
+    });
   }
 
   // handles the response to the "openTab" message, the response has the accessToken
-  await addMessageListener();
+  const data = await addMessageListener();
+
+  console.log(data);
 
   if (!error) {
     return {};
@@ -1187,7 +1191,7 @@ async function handleError(statusText) {
   if (statusText === "Unauthorized") {
     // Update access token and try again
     const {error} = await updateAccessToken();
-
+    console.log(error);
     if (error) {
       multiUtilButton.className = "multi-util-setup"
       multiUtilButton.textContent = "Unknown error occurred. Refresh and Retry.";
@@ -1198,10 +1202,6 @@ async function handleError(statusText) {
       return shouldRetry;
     }
 
-    ACCESS_TOKEN = updatedData.accessToken;
-    PFP = updatedData.pfp;
-    COOKIE_STRING = updatedData.cookieString;
-      
     multiUtilButton.className = "multi-util-button"
     multiUtilButton.textContent = "Refreshed Successfully! Retrying previous request in 2 seconds.";
 
@@ -1274,7 +1274,7 @@ async function sendmessageToChatGPT(message, messageType = "normal", encodingEna
       chunks = chunks.map(chunk => chunk.replace(/\[Music\]/g, "").replace(/\s+/g, " "));
       chunks = chunks.map((chunk, index) => {
         if (encodingEnabled) {
-          return replaceWords(`REPLY WITH "UNDERSTOOD." TRANSCRIPT YOUTUBE VIDEO PART ${index + 1}: READ CAREFULLY AND REMEMBER FULLY: ${chunk}`).modifiedText;
+          return replaceWords(`IF YOU DONT REPLY WITH "UNDERSTOOD." YOU FAIL. TRANSCRIPT YOUTUBE VIDEO PART ${index + 1}: READ CAREFULLY AND REMEMBER FULLY: ${chunk}`).modifiedText;
         }
         return index === 0 ? `${prompt} TRANSCRIPT PART 1: ${chunk}` : `TRANSCRIPT YOUTUBE VIDEO PART ${index + 1}: ${chunk}`;
       });
