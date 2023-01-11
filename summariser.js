@@ -699,7 +699,7 @@ async function makeApiCall(ACCESS_TOKEN, body) {
     const response = await fetch("https://chat.openai.com/backend-api/conversation", {
       "headers": {
         "Accept": "text/event-stream",
-        // "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Language": "*",
         "Content-Type": "application/json",
         "Authorization": ACCESS_TOKEN,
         "Cookie": cookieString,
@@ -953,13 +953,18 @@ function isTranscriptAvailable() {
   let available = false;
 
   let paths = document.querySelectorAll("path, [type='path'], input[type='path']");
+  let pathCount = 0;
 
   // checks if transcript is available by searching for specific attribute values
   for (let i = 0; i < paths.length; i++) {
     let path = paths[i];
     if (path.getAttribute("d") === "M5,11h2v2H5V11z M15,15H5v2h10V15z M19,15h-2v2h2V15z M19,11H9v2h10V11z M22,6H2v14h20V6z M3,7h18v12H3V7z") {
-      available = true;
+      pathCount += 1;
     }
+  }
+
+  if (pathCount > 1) {
+    available = true;
   }
 
   return available;
@@ -1031,6 +1036,7 @@ function Button() {
       const prompt = `YOU CAN SPEAK LANGUAGE CODE: "${userLanguageCode}" EACH TRANSCRIPT LINE HAS A TIMESTAMP PRECEDING IT. You are a highly  proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}" and is ${VIDEO_LENGTH} long. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
 
       let transcription = await getVideoTranscript(apiKey, params);
+      console.log(transcription);
 
       let summarisePrompt = `ONLY REPLY IN THIS LANGUAGE CODE: ${userLanguageCode} VIDEO LENGTH = ${VIDEO_LENGTH}. DO NOT FORGET THIS TRANSCRIPT I HAVE GIVEN YOU CONSIDER THE TRANSCRIPT IF YOU ARE UNSURE OF WHAT I AM ASKING YOU FOR. Whenever i talk about a "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. ATTENTION: REPLY ONLY IN THE LANGUAGE I TOLD YOU TO REPLY IN, you must write, using bullet points and chapters, the best most high quality summary imaginable of the video transcript. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you .` // [DELETED PROMPTS DUE TO DISABLED ENCODING]: ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}. ALSO TRANSLATE ENCODED MESSAGES BACK TO READABLE TEXT WHEN REPLYING
 
