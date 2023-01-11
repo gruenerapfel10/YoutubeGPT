@@ -699,7 +699,7 @@ async function makeApiCall(ACCESS_TOKEN, body) {
     const response = await fetch("https://chat.openai.com/backend-api/conversation", {
       "headers": {
         "Accept": "text/event-stream",
-        "Accept-Language": "en-US,en;q=0.5",
+        // "Accept-Language": "en-US,en;q=0.5",
         "Content-Type": "application/json",
         "Authorization": ACCESS_TOKEN,
         "Cookie": cookieString,
