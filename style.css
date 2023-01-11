@@ -3,7 +3,7 @@
 * {
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
+    /* box-sizing: border-box; */
     font-family: 'Roboto', sans-serif;
     scroll-behavior: smooth 50ms;
     -moz-scrollbar-height: 40px;
@@ -368,6 +368,7 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
 }
 
 .multi-util-cloudflare {
@@ -383,6 +384,7 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
 }
 
 .multi-util-oauth {
@@ -398,6 +400,7 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
 }
 
 .multi-util-cooldown {
@@ -413,6 +416,7 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
 }
 
 .multi-util-hidden {
@@ -434,6 +438,7 @@ code {
   justify-content: center;
   border: none;
   pointer-events: none;
+  color: #fff;
 }
 
 .multi-util-oauth-setup {
@@ -449,6 +454,7 @@ code {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
 }
 
 .tool-bar-container{
