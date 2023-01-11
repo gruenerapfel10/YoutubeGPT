@@ -952,20 +952,8 @@ function setCredentials() {
 function isTranscriptAvailable() {
   let available = false;
 
-  let paths = document.querySelectorAll("path, [type='path'], input[type='path']");
-  let pathCount = 0;
-
   // checks if transcript is available by searching for specific attribute values
-  for (let i = 0; i < paths.length; i++) {
-    let path = paths[i];
-    if (path.getAttribute("d") === "M5,11h2v2H5V11z M15,15H5v2h10V15z M19,15h-2v2h2V15z M19,11H9v2h10V11z M22,6H2v14h20V6z M3,7h18v12H3V7z") {
-      pathCount += 1;
-    }
-  }
-
-  if (pathCount > 1) {
-    available = true;
-  }
+  available = parseInt(document.querySelector(".ytp-subtitles-button-icon").getAttribute("fill-opacity")) === 1;
 
   return available;
 }
