@@ -2,7 +2,7 @@ const BUTTON_TEXT = "Summarize";
 const BUTTON_WIDTH = 100; // px
 let ACCESS_TOKEN = localStorage.getItem("summariser-extension-access-token") || "Bearer none" // if none then when user clicks the summarize button it will get it for them
 let PFP = localStorage.getItem("summariser-extension-pfp") // if none then when user clicks the summarize button it will get it for them
-let cookieString = localStorage.getItem("summariser-extension-cookie-string");
+let COOKIE_STRING = localStorage.getItem("summariser-extension-cookie-string");
 const CHUNK_SIZE = 16000; // messages are split into chunks in order to fit the full transcript to ChatGPT
 let conversation = null; // ChatGPT conversation, if null then need to start one else continue existing conversation
 const ENCODING = false; // encoding messages = more transcript can fit in less messages but can result in less accurate summaries and abilities
@@ -632,9 +632,6 @@ function findMostAreaWords(text) {
 }
 
 async function updateAccessToken() {
-  let receivedAccessToken;
-  let receivedPfp;
-  let receivedCookieString;
   let error;
 
   browser.runtime.sendMessage({ type: 'openTab' }); // sends a message to the background to open a new tab at https://chat.openai.com/chat, background script handles getting the access token and sends it back
@@ -645,21 +642,20 @@ async function updateAccessToken() {
       if (request.accessToken) {
         if (request.error) {
           error = request.error;
-          return;
+          return {error};
         }
-        ACCESS_TOKEN = "Bearer " + request.accessToken;
-        PFP = request.pfp;
-        cookieString = request.cookieString;
-        receivedAccessToken = request.accessToken;
-        receivedPfp = request.pfp;
-        receivedCookieString = request.cookieString;
+        const {accessToken, cookieString, pfp} = request;
+        ACCESS_TOKEN = "Bearer " + accessToken;
+        PFP = pfp;
+        COOKIE_STRING = cookieString;
         await browser.runtime.onMessage.removeListener(listener);  // remove the listener after it has received the access token
         localStorage.setItem("summariser-extension-access-token", ACCESS_TOKEN); // set accesstoken in localstroage
         localStorage.setItem("summariser-extension-pfp", PFP);
-        localStorage.setItem("summariser-extension-cookie-string");
-        return "Updated access token and removed tab."
+        localStorage.setItem("summariser-extension-cookie-string", COOKIE_STRING);
+        return {accessToken, pfp, cookieString};
       }
     }
+
     browser.runtime.onMessage.addListener(listener);
   }
 
@@ -667,7 +663,7 @@ async function updateAccessToken() {
   await addMessageListener();
 
   if (!error) {
-    return {receivedAccessToken, receivedPfp, receivedCookieString};
+    return {};
   }
 
   return {error}
@@ -693,16 +689,16 @@ async function handleCloudflareCheck() {
 }
 
 async function makeApiCall(ACCESS_TOKEN, body) {
-  console.log(cookieString);
   // calls api point with appropriate body to start a new conversation
+
   try {
     const response = await fetch("https://chat.openai.com/backend-api/conversation", {
       "headers": {
         "Accept": "text/event-stream",
-        "Accept-Language": "*",
+        "Accept-Language": "en-US,en;q=0.5",
         "Content-Type": "application/json",
         "Authorization": ACCESS_TOKEN,
-        "Cookie": cookieString,
+        "Cookie": COOKIE_STRING,
       },
       "body": JSON.stringify(body),
       "method": "POST",
@@ -710,6 +706,7 @@ async function makeApiCall(ACCESS_TOKEN, body) {
     return response;
   }
   catch (error) {
+    console.log(error);
     return null;
   }
 }
@@ -1026,7 +1023,7 @@ function Button() {
       let transcription = await getVideoTranscript(apiKey, params);
       console.log(transcription);
 
-      let summarisePrompt = `ONLY REPLY IN THIS LANGUAGE CODE: ${userLanguageCode} VIDEO LENGTH = ${VIDEO_LENGTH}. DO NOT FORGET THIS TRANSCRIPT I HAVE GIVEN YOU CONSIDER THE TRANSCRIPT IF YOU ARE UNSURE OF WHAT I AM ASKING YOU FOR. Whenever i talk about a "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. ATTENTION: REPLY ONLY IN THE LANGUAGE I TOLD YOU TO REPLY IN, you must write, using bullet points and chapters, the best most high quality summary imaginable of the video transcript. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you .` // [DELETED PROMPTS DUE TO DISABLED ENCODING]: ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}. ALSO TRANSLATE ENCODED MESSAGES BACK TO READABLE TEXT WHEN REPLYING
+      let summarisePrompt = `ONLY REPLY IN THIS LANGUAGE CODE: ${userLanguageCode} VIDEO LENGTH = ${VIDEO_LENGTH}. DO NOT FORGET THIS TRANSCRIPT I HAVE GIVEN YOU CONSIDER THE TRANSCRIPT IF YOU ARE UNSURE OF WHAT I AM ASKING YOU FOR. If i use words like "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. ATTENTION: REPLY ONLY IN THE LANGUAGE I TOLD YOU TO REPLY IN, you must write, using bullet points and chapters, the best most high quality summary imaginable of the video transcript. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you . REMEMBER: EXHAUSTIVE DETAIL SUMMARY.` // [DELETED PROMPTS DUE TO DISABLED ENCODING]: ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}. ALSO TRANSLATE ENCODED MESSAGES BACK TO READABLE TEXT WHEN REPLYING
 
       sendmessageToChatGPT(transcription, "summary", ENCODING, prompt, summarisePrompt)
     }
@@ -1189,20 +1186,21 @@ async function handleError(statusText) {
   // handle errors
   if (statusText === "Unauthorized") {
     // Update access token and try again
-    const updatedData = await updateAccessToken();
+    const {error} = await updateAccessToken();
 
-    if (updatedData.error) {
-      multiUtilButton.className = "multi-util-cooldown"
-      multiUtilButton.textContent = "Rate limited by ChatGPT. Reset your details for you.";
+    if (error) {
+      multiUtilButton.className = "multi-util-setup"
+      multiUtilButton.textContent = "Unknown error occurred. Refresh and Retry.";
       localStorage.setItem("summariser-extension-access-token", "Bearer none");
       localStorage.setItem("summariser-extension-pfp", "");
+      localStorage.setItem("summariser-extension-cookie-string", "");
       shouldRetry = false;
       return shouldRetry;
     }
 
     ACCESS_TOKEN = updatedData.accessToken;
     PFP = updatedData.pfp;
-    cookieString = updatedData.cookieString;
+    COOKIE_STRING = updatedData.cookieString;
       
     multiUtilButton.className = "multi-util-button"
     multiUtilButton.textContent = "Refreshed Successfully! Retrying previous request in 2 seconds.";
@@ -1211,7 +1209,14 @@ async function handleError(statusText) {
     shouldRetry = true;
   }
   else if (statusText === "Forbidden") { // sometimes also because unauthorized
-    ACCESS_TOKEN = await updateAccessToken();
+    const {error} = await updateAccessToken()
+
+    if (error) {
+      multiUtilButton.className = "multi-util-setup"
+      multiUtilButton.textContent = "Unknown error occurred. Refresh & Retry.";
+      shouldRetry = false;
+      return shouldRetry;
+    }
 
     // if (!localStorage.getItem("summariser-extension-access-token")) {
     //   ACCESS_TOKEN = await updateAccessToken();

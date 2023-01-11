@@ -2,7 +2,6 @@ const ChatGPT_URL = "https://chat.openai.com/chat";
 const ChatGPT_Auth_Endpoint = "https://chat.openai.com/api/auth/session";
 
 const getAccessToken = async (cookieString) => {
-  console.log(cookieString);
   const response = await fetch(ChatGPT_Auth_Endpoint, {
     headers: {
       cookie: cookieString,
@@ -82,11 +81,20 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     case "__Secure-next-auth.callback-url":
                       cookieArray["__Secure-next-auth.callback-url"] = cookie.value;
                       break;
+                    case "intercom-id-dgkjq2bp":
+                        cookieArray["intercom-id-dgkjq2bp"] = cookie.value;
+                        break;
+                    case "__cf_bm":
+                      cookieArray["__cf_bm"] = cookie.value;
+                      break;
+                    case "_cfuvid":
+                      cookieArray["_cfuvid"] = cookie.value;
+                      break;
                   }
                 }
 
                 // these are all the relevant cookies, might change in the future
-                const cookieString = `cf_clearance=${cookieArray["cf_clearance"]}; intercom-session-dgkjq2bp=${cookieArray["intercom-session-dgkjq2bp"]}; intercom-device-id-dgkjq2bp=${cookieArray["intercom-device-id-dgkjq2bp"]}; __Secure-next-auth.session-token=${cookieArray["__Secure-next-auth.session-token"]}; mp_d7d7628de9d5e6160010b84db960a7ee_mixpanel=${cookieArray["mp_d7d7628de9d5e6160010b84db960a7ee_mixpanel"]}; __Host-next-auth.csrf-token=${cookieArray["__Host-next-auth.csrf-token"]}; __Secure-next-auth.callback-url=${cookieArray["__Secure-next-auth.callback-url"]}`;
+                const cookieString = `cf_clearance=${cookieArray["cf_clearance"]}; intercom-session-dgkjq2bp=${cookieArray["intercom-session-dgkjq2bp"]}; intercom-device-id-dgkjq2bp=${cookieArray["intercom-device-id-dgkjq2bp"]}; __Secure-next-auth.session-token=${cookieArray["__Secure-next-auth.session-token"]}; mp_d7d7628de9d5e6160010b84db960a7ee_mixpanel=${cookieArray["mp_d7d7628de9d5e6160010b84db960a7ee_mixpanel"]}; __Host-next-auth.csrf-token=${cookieArray["__Host-next-auth.csrf-token"]}; __Secure-next-auth.callback-url=${cookieArray["__Secure-next-auth.callback-url"]}; intercom-id-dgkjq2bp=${cookieArray["intercom-id-dgkjq2bp"]}; __cf_bm=${cookieArray["__cf_bm"]}; _cfuvid=${cookieArray["_cfuvid"]}`;
 
                 const { accessToken, pfp, error } = await getAccessToken(cookieString);
                 resolve({ accessToken, pfp, cookieString, error });
@@ -95,6 +103,8 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
           }
 
           const {accessToken, pfp, cookieString, error} = await getCookies();
+
+          console.log(cookieString);
 
           if (error) {
             chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp, cookieString, error});
