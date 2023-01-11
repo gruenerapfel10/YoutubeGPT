@@ -11,6 +11,10 @@ const getAccessToken = async (cookieString) => {
 
   const json = await response.json();
 
+  if (json.details === "Rate limit exceeded") {
+    return {error: json.details};
+  }
+
   const accessToken = json.accessToken;
 
   console.log(json);
@@ -84,14 +88,22 @@ browser.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                 // these are all the relevant cookies, might change in the future
                 const cookieString = `cf_clearance=${cookieArray["cf_clearance"]}; intercom-session-dgkjq2bp=${cookieArray["intercom-session-dgkjq2bp"]}; intercom-device-id-dgkjq2bp=${cookieArray["intercom-device-id-dgkjq2bp"]}; __Secure-next-auth.session-token=${cookieArray["__Secure-next-auth.session-token"]}; mp_d7d7628de9d5e6160010b84db960a7ee_mixpanel=${cookieArray["mp_d7d7628de9d5e6160010b84db960a7ee_mixpanel"]}; __Host-next-auth.csrf-token=${cookieArray["__Host-next-auth.csrf-token"]}; __Secure-next-auth.callback-url=${cookieArray["__Secure-next-auth.callback-url"]}`;
 
-                const { accessToken, pfp } = await getAccessToken(cookieString);
-                resolve({ accessToken, pfp, cookieString });
+                const { accessToken, pfp, error } = await getAccessToken(cookieString);
+                resolve({ accessToken, pfp, cookieString, error });
               });
             });
           }
 
-          const {accessToken, pfp, cookieString} = await getCookies();
-          console.log(cookieString);
+          const {accessToken, pfp, cookieString, error} = await getCookies();
+
+          if (error) {
+            chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp, cookieString, error});
+            chrome.tabs.remove(tab.id, function() {
+              chrome.tabs.update(sender.tab.id, {active: true});
+            });
+            return;
+          }
+
           chrome.tabs.sendMessage(sender.tab.id, {accessToken, pfp, cookieString});
           chrome.tabs.remove(tab.id, function() {
             chrome.tabs.update(sender.tab.id, {active: true});

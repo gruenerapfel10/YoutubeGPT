@@ -635,6 +635,7 @@ async function updateAccessToken() {
   let receivedAccessToken;
   let receivedPfp;
   let receivedCookieString;
+  let error;
 
   browser.runtime.sendMessage({ type: 'openTab' }); // sends a message to the background to open a new tab at https://chat.openai.com/chat, background script handles getting the access token and sends it back
   
@@ -642,7 +643,10 @@ async function updateAccessToken() {
   async function addMessageListener() {
     const listener = async (request, sender, sendResponse) => {
       if (request.accessToken) {
-        console.log(request.accessToken);
+        if (request.error) {
+          error = request.error;
+          return;
+        }
         ACCESS_TOKEN = "Bearer " + request.accessToken;
         PFP = request.pfp;
         cookieString = request.cookieString;
@@ -662,7 +666,11 @@ async function updateAccessToken() {
   // handles the response to the "openTab" message, the response has the accessToken
   await addMessageListener();
 
-  return {receivedAccessToken, receivedPfp, receivedCookieString};
+  if (!error) {
+    return {receivedAccessToken, receivedPfp, receivedCookieString};
+  }
+
+  return {error}
 } 
 
 async function handleCloudflareCheck() {
@@ -914,11 +922,12 @@ async function continueConversation(message, type, custom_assistant_type) {
 
 let apiKey;
 let params;
+let userLanguageCode;
 
-// sets apiKey & params
+// sets apiKey, params, and userLanguage
 function setCredentials() {
   const scriptTags = document.querySelectorAll('script');
-  // searches for the script tag with needed data to set the apiKey and params variables
+  // searches for the script tag with needed data to set the apiKey, params, and userLanguage variables
   for (const scriptTag of scriptTags) {
     // gets and sets the "params" which is needed as part of the body for the post request to get the transcript of the youtube video 
     if (scriptTag.textContent.includes('var ytInitialData = ')) {
@@ -926,6 +935,10 @@ function setCredentials() {
       const endIndex = scriptTag.innerHTML.indexOf('"}', startIndex);
       const substring = scriptTag.innerHTML.substring(startIndex, endIndex + 3);
       params = substring.split(':')[2].replace(/[}"\\]/g, ""); // set params
+      const requestLanguageStartIndex = scriptTag.innerHTML.indexOf('"requestLanguage":"');
+      const requestLanguageEndIndex = scriptTag.innerHTML.indexOf('"', requestLanguageStartIndex + 18);
+      const substring2 = scriptTag.innerHTML.substring(requestLanguageStartIndex, requestLanguageEndIndex + 3);
+      userLanguageCode = substring2.split(':')[substring2.split(':').length - 1].replace("\"","");
     }
     // gets and sets the api key using regex
     else if (scriptTag.textContent.includes("INNERTUBE_API_KEY")) {
@@ -939,12 +952,12 @@ function setCredentials() {
 function isTranscriptAvailable() {
   let available = false;
 
-  let buttons = document.querySelectorAll("button, [type='button'], input[type='button']");
+  let paths = document.querySelectorAll("path, [type='path'], input[type='path']");
 
   // checks if transcript is available by searching for specific attribute values
-  for (let i = 0; i < buttons.length; i++) {
-    let button = buttons[i];
-    if (button.getAttribute("aria-label") === "Close transcript") {
+  for (let i = 0; i < paths.length; i++) {
+    let path = paths[i];
+    if (path.getAttribute("d") === "M5,11h2v2H5V11z M15,15H5v2h10V15z M19,15h-2v2h2V15z M19,11H9v2h10V11z M22,6H2v14h20V6z M3,7h18v12H3V7z") {
       available = true;
     }
   }
@@ -1015,10 +1028,11 @@ function Button() {
       const VIDEO_LENGTH = document.querySelector(".ytp-time-duration").textContent;
 
       // the initial prompt to be included with the summary, it tells ChatGPT how to interpret the message
-      const prompt = `EACH TRANSCRIPT LINE HAS A TIMESTAMP PRECEDING IT. You are a highly proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}" and is ${VIDEO_LENGTH} long. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
+      const prompt = `YOU CAN SPEAK LANGUAGE CODE: "${userLanguageCode}" EACH TRANSCRIPT LINE HAS A TIMESTAMP PRECEDING IT. You are a highly  proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}" and is ${VIDEO_LENGTH} long. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
 
       let transcription = await getVideoTranscript(apiKey, params);
-      let summarisePrompt = `VIDEO LENGTH = ${VIDEO_LENGTH}. DO NOT FORGET THIS TRANSCRIPT I HAVE GIVEN YOU CONSIDER THE TRANSCRIPT IF YOU ARE UNSURE OF WHAT I AM ASKING YOU FOR. Whenever i talk about a "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. As a part of your roleplay you must give the best most high quality summary imaginable of the video transcript using chapters and bullet points. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you .` // [DELETED PROMPTS DUE TO DISABLED ENCODING]: ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}. ALSO TRANSLATE ENCODED MESSAGES BACK TO READABLE TEXT WHEN REPLYING
+
+      let summarisePrompt = `ONLY REPLY IN THIS LANGUAGE CODE: ${userLanguageCode} VIDEO LENGTH = ${VIDEO_LENGTH}. DO NOT FORGET THIS TRANSCRIPT I HAVE GIVEN YOU CONSIDER THE TRANSCRIPT IF YOU ARE UNSURE OF WHAT I AM ASKING YOU FOR. Whenever i talk about a "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. ATTENTION: REPLY ONLY IN THE LANGUAGE I TOLD YOU TO REPLY IN, you must write, using bullet points and chapters, the best most high quality summary imaginable of the video transcript. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you .` // [DELETED PROMPTS DUE TO DISABLED ENCODING]: ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}. ALSO TRANSLATE ENCODED MESSAGES BACK TO READABLE TEXT WHEN REPLYING
 
       sendmessageToChatGPT(transcription, "summary", ENCODING, prompt, summarisePrompt)
     }
@@ -1182,6 +1196,15 @@ async function handleError(statusText) {
   if (statusText === "Unauthorized") {
     // Update access token and try again
     const updatedData = await updateAccessToken();
+
+    if (updatedData.error) {
+      multiUtilButton.className = "multi-util-cooldown"
+      multiUtilButton.textContent = "Rate limited by ChatGPT. Reset your details for you.";
+      localStorage.setItem("summariser-extension-access-token", "Bearer none");
+      localStorage.setItem("summariser-extension-pfp", "");
+      shouldRetry = false;
+      return shouldRetry;
+    }
 
     ACCESS_TOKEN = updatedData.accessToken;
     PFP = updatedData.pfp;
