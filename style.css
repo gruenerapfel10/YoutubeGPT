@@ -3,7 +3,7 @@
 * {
     margin: 0;
     padding: 0;
-    /* box-sizing: border-box; */
+    box-sizing: border-box;
     font-family: 'Roboto', sans-serif;
     scroll-behavior: smooth 50ms;
     -moz-scrollbar-height: 40px;
@@ -13,6 +13,10 @@
     --invalid-oauth-color: rgba(255, 0, 50);
     --cooldown-color: rgba(0, 0, 0);
     --code-color: rgba(0, 0, 0, 0);
+}
+
+#logo-icon {
+  box-sizing: content-box;
 }
 
 :root {
@@ -79,7 +83,6 @@
   background-color: var(--primary-color);
   padding: 0;
   border-radius: 8px;
-  box-sizing: border-box;
 }
 
 .input-form-container {
@@ -88,7 +91,6 @@
   background-color: transparent;
   position: absolute;
   bottom: 0;
-  box-sizing: border-box;
 }
 
 .info-div {
@@ -103,7 +105,6 @@
   border: 2px solid var(--secondary-color);
   overflow-y: scroll;
   overflow-y: overlay;
-  box-sizing: border-box;
 }
 
 .input-form {
@@ -132,7 +133,6 @@
   border-radius: 5px;
   z-index: 2;
   box-shadow: rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.1) 0px 0px 15px 0px;
-  box-sizing: border-box;
 }
 
 .textarea-container textarea {
@@ -176,7 +176,6 @@
   scale: 1.5;
   background-color: transparent;
   fill: var(--font-color);
-  box-sizing: border-box;
 }
 
 .loading-dots {
@@ -184,7 +183,6 @@
   width: 100%;
   text-justify: center;
   color: var(--font-color);
-  box-sizing: border-box;
 }
 
 .assistant-message {
@@ -194,7 +192,6 @@
   display: flex;
   padding: 20px;
   font-size: 16px;
-  box-sizing: border-box;
 }
 
 .user-message {
@@ -206,7 +203,6 @@
   font-size: 16px;
   letter-spacing: 1px;
   color: var(--font-color);
-  box-sizing: border-box;
 }
 
 .assistant-icon {
@@ -216,12 +212,10 @@
   display: flex;
   justify-content: top;
   align-items: center;
-  box-sizing: border-box;
 }
 
 .assistant-icon > svg {
   fill: var(--gpt-svg-color);
-  box-sizing: border-box;
 }
 
 .user-icon {
@@ -233,7 +227,6 @@
   align-items: center;
   border-radius: 8px;
   padding: 5px;
-  box-sizing: border-box;
 }
 
 .question {
@@ -245,19 +238,16 @@
   line-height: 28px;
   font-weight: 400;
   color: var(--font-color);
-  box-sizing: border-box;
 }
 
 .assistant-message > *:nth-child(1) {
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
 }
 
 .user-message > *:nth-child(1) {
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
 }
 
 .block-text{
@@ -265,7 +255,6 @@
   margin-block: 20px;
   margin-inline: none;
   color: var(--font-color);
-  box-sizing: border-box;
 }
 
 .block-text-first {
@@ -273,14 +262,12 @@
   margin-block: 0px 0px 20px;
   margin-inline: none;
   color: var(--font-color);
-  box-sizing: border-box;
 }
 
 .list-element {
   width: 100%;
   padding-left: 20px;
   color: var(--font-color);
-  box-sizing: border-box;
 }
 
 .list-element::before {
@@ -288,7 +275,6 @@
   color: var(--font-color); /* change the color of the bullet point */
   margin-left: -20px; /* use a negative margin to overlap the padding */
   margin-right: 10px;
-  box-sizing: border-box;
 }
 
 .list-element::marker {
@@ -301,7 +287,6 @@
   padding-left: 16px;
   width: 100%;
   color: var(--font-color);
-  box-sizing: border-box;
 }
 
 .code-top {
@@ -351,27 +336,23 @@ code {
   margin-right: 6px;
   width: 22px;
   height: 100%;
-  box-sizing: border-box;
 }
 
 .tick-svg {
   margin-right: 6px;
   width: 22px;
   height: 100%;
-  box-sizing: border-box;
 }
 
 .copy-button > h4 {
   font-size: 16px;
   width: 50%;
-  box-sizing: border-box;
 }
 
 .copy-button > svg {
   margin-right: 6px;
   width: 22px;
   height: 100%;
-  box-sizing: border-box;
 }
 
 .info-div::-moz-scrollbar-thumb {
@@ -517,13 +498,11 @@ code {
   height: 100%;
   fill: var(--primary-color);
   transition: transform 250ms;
-  box-sizing: border-box;
 }
 
 .settings-button:hover > svg {
   transform: rotate(90deg);
   fill: rgba(255,255,255);
-  box-sizing: border-box;
 }
 
 .theme-button {
@@ -546,22 +525,18 @@ code {
   height: 100%;
   fill: var(--primary-color);
   transition: transform 250ms;
-  box-sizing: border-box;
 }
 
 .theme-button:hover > svg {
   fill: rgba(255,255,255);
-  box-sizing: border-box;
 }
 
 .light-theme-svg {
   fill: var(--primary-color);
-  box-sizing: border-box;
 }
 
 .dark-theme-svg {
   fill: var(--primary-color);
-  box-sizing: border-box;
 }
 
 .lower-div {
@@ -570,5 +545,4 @@ code {
   background-color: var(--primary-color);
   position: relative;
   bottom: 0;
-  box-sizing: border-box;
 }
