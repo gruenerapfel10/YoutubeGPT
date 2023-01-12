@@ -661,7 +661,6 @@ async function updateAccessToken() {
 
 async function handleCloudflareCheck() {
   browser.runtime.sendMessage({ type: 'cloudflare' }); // sends a message to the background to open a new tab at https://chat.openai.com/chat, background script handles getting the access token and sends it back
-  console.log("sent")
   // create a promise that resolves or rejects based on the response to the "cloudflare" message
   return new Promise((resolve, reject) => {
     const listener = (request, sender, sendResponse) => {
@@ -680,7 +679,6 @@ async function handleCloudflareCheck() {
 
 async function makeApiCall(ACCESS_TOKEN, body) {
   // calls api point with appropriate body to start a new conversation
-
   try {
     const response = await fetch("https://chat.openai.com/backend-api/conversation", {
       "headers": {
@@ -1011,9 +1009,8 @@ function Button() {
       const prompt = `YOU CAN SPEAK LANGUAGE CODE: "${userLanguageCode}" EACH TRANSCRIPT LINE HAS A TIMESTAMP PRECEDING IT. You are a highly  proficient AI at processing large youtube video transcripts. You meticulously study and read every word of the transcript parts I give you. If asked to write code you should use proper formatting. You should only reply with "Understood." once you read the texts. You should be prepared to answer any questions about the video or anything as usual, we start now, this youtube video is called "${VIDEO_NAME}" and is ${VIDEO_LENGTH} long. If I use words like "video" or "transcript" assume that I'm referring to this video's transcript unless explicitly stated otherwise. Remember to also use your own knowledge to add further understanding and context for yourself: `
 
       let transcription = await getVideoTranscript(apiKey, params);
-      console.log(transcription);
 
-      let summarisePrompt = `ONLY REPLY IN THIS LANGUAGE CODE: ${userLanguageCode} VIDEO LENGTH = ${VIDEO_LENGTH}. DO NOT FORGET THIS TRANSCRIPT I HAVE GIVEN YOU CONSIDER THE TRANSCRIPT IF YOU ARE UNSURE OF WHAT I AM ASKING YOU FOR. If i use words like "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. ATTENTION: REPLY ONLY IN THE LANGUAGE I TOLD YOU TO REPLY IN, you must write, using bullet points and chapters, the best most high quality summary imaginable of the video transcript. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you . REMEMBER: EXHAUSTIVE DETAIL CHAPTERS AND BULLET POINTS SUMMARY.` // [DELETED PROMPTS DUE TO DISABLED ENCODING]: ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}. ALSO TRANSLATE ENCODED MESSAGES BACK TO READABLE TEXT WHEN REPLYING
+      let summarisePrompt = `WRITE AN EXHAUSTIVE SUMMARY WITH CHAPTERS AND BULLET POINTS OF THE VIDEO. ONLY REPLY IN THIS LANGUAGE CODE: ${userLanguageCode} VIDEO LENGTH = ${VIDEO_LENGTH}. DO NOT FORGET THIS TRANSCRIPT I HAVE GIVEN YOU CONSIDER THE TRANSCRIPT IF YOU ARE UNSURE OF WHAT I AM ASKING YOU FOR. If i use words like "video" assume that it is about the transcript. with that being said: roleplay continued: as you are such a proficient ai you have read the transcript parts I gave you meticulously and are now ready to answer any and all questions about it in EXHAUSTIVE and COMPLETE detail. Whenever a user asks a question about the video transcript you always re-read the transcript every time to make sure you haven't missed anything. However you are so good that you are also able to do anything that you normally would be able to do like formatting code snippets. ATTENTION: REPLY ONLY IN THE LANGUAGE I TOLD YOU TO REPLY IN, you must write, using bullet points and chapters, the best most high quality summary imaginable of the video transcript. penultimately as part of your roleplay if i use words like "video" or "vid" you must assume i am talking about the transcript i have given you .` // [DELETED PROMPTS DUE TO DISABLED ENCODING]: ATTENTION: In the transcript parts I have given you there are a number of strange characters, you need to use this dictionary to interpret the encoded messages as part of the roleplay: ${modification.commonWordsString}. ALSO TRANSLATE ENCODED MESSAGES BACK TO READABLE TEXT WHEN REPLYING
 
       sendmessageToChatGPT(transcription, "summary", ENCODING, prompt, summarisePrompt)
     }
@@ -1225,7 +1222,7 @@ async function handleError(statusText) {
 
   } else if (statusText === "Too Many Requests") {
     multiUtilButton.className = "multi-util-cooldown"
-    multiUtilButton.textContent = "Rate limited by ChatGPT. Reset your details for you.";
+    multiUtilButton.textContent = "Rate limited or an unknown error occurred check ChatGPT. Your details have been reset for you.";
     localStorage.setItem("summariser-extension-access-token", "Bearer none");
     localStorage.setItem("summariser-extension-pfp", "");
     shouldRetry = false;
@@ -1293,6 +1290,7 @@ async function sendmessageToChatGPT(message, messageType = "normal", encodingEna
       multiUtilButton.textContent = "";
 
       if (shouldRetry) {
+        console.log("retrying");
         if (type === "start") {
           conversation = null;
           MESSAGES = []
@@ -1306,6 +1304,7 @@ async function sendmessageToChatGPT(message, messageType = "normal", encodingEna
     }
   
     i += 1;
+    console.log("still in the loop " + i);
   }
 
   updateEnterButton("loaded");
@@ -1376,19 +1375,27 @@ function Extension() {
 
   const textarea = document.createElement("textarea");
   textarea.rows = 1;
+  textarea.placeholder = "Ask questions about the video here or ask for another summary if unsatisfied by the first."
   
   const playerElement = document.querySelector("#ytd-player");
   let playerHeight = parseInt(getComputedStyle(playerElement).height);
 
+  let screenWidth = document.documentElement.clientWidth;
+  let elementWidth = document.querySelector("#columns").getBoundingClientRect().right;
+  let totalWidth = screenWidth - elementWidth;
+
   // set initial heights
   infoDivContainer.style.height = `${parseInt(getComputedStyle(document.querySelector("#ytd-player")).height) + 160 + "px"}`;
-  extension.style.width = `calc(100% + ${getComputedStyle(document.querySelector("#columns")).marginRight})`;
+  extension.style.width = `calc(100% + ${totalWidth - 10}px)`;
 
   // adjust heights on resize to be consistent with the size of youtube video player
   window.addEventListener('resize', function () {
     playerHeight = parseInt(getComputedStyle(playerElement).height);
     infoDivContainer.style.height = `${playerHeight + 160}px`;
-    extension.style.width = `calc(100% + ${getComputedStyle(document.querySelector("#columns")).marginRight})`;
+    screenWidth = document.documentElement.clientWidth;
+    elementWidth = document.querySelector("#columns").getBoundingClientRect().right;
+    totalWidth = screenWidth - elementWidth;
+    extension.style.width = `calc(100% + ${totalWidth - 10}px)`;
   });
 
   // auto scaling of code with input

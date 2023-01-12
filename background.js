@@ -1,12 +1,47 @@
 const ChatGPT_URL = "https://chat.openai.com/chat";
 const ChatGPT_Auth_Endpoint = "https://chat.openai.com/api/auth/session";
 
+async function handleCloudflareCheck() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.create({ url: 'https://chat.openai.com/chat', active: false }, function (tab) {
+      waitForElement(tab.id, ".scrollbar-trigger").then(() => {
+        chrome.tabs.remove(tab.id, function () {});
+        resolve("successful");
+      }).catch(() => {
+        reject("unsuccessful");
+      });
+    });
+  });
+}
+
 const getAccessToken = async (cookieString) => {
   const response = await fetch(ChatGPT_Auth_Endpoint, {
     headers: {
       cookie: cookieString,
     },
   });
+
+  const statusCode = await response.status;
+
+  if (statusCode === 403) {
+    try {
+      console.log("cloudflare");
+      const cloudflareStatus = await handleCloudflareCheck();
+      await updateMultiUtilButton(tabId, "refreshed");
+      response = await fetch(ChatGPT_Auth_Endpoint, {
+        headers: {
+          cookie: cookieString,
+        },
+      });
+    } catch (error) {
+      await updateMultiUtilButton(tabId, "cloudflare-captcha");
+      return {error: "Rate limit exceeded."}
+    }
+  }
+  
+  if (statusCode !== 200) {
+    return {error: "Rate limit exceeded."}
+  }
 
   const json = await response.json();
 
