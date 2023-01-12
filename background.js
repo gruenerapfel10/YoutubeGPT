@@ -13,11 +13,7 @@ const getAccessToken = async (cookieString) => {
   if (json.details === "Rate limit exceeded") {
     return {error: json.details};
   }
-
-  console.log('returned error')
-
-  return {error: "Rate limit exceeded"};
-
+  
   const accessToken = json.accessToken;
 
   const pfp = json.user.image;

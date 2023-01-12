@@ -12,7 +12,7 @@
     --cloudflare-color: rgba(255, 150, 50);
     --invalid-oauth-color: rgba(255, 0, 50);
     --cooldown-color: rgba(0, 0, 0);
-    --code-color: rgba(0, 0, 0, 0);
+    --code-color: rgba(0, 0, 0, 1);
 }
 
 #logo-icon {
