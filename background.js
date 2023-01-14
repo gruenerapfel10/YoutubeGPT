@@ -15,7 +15,7 @@ async function handleCloudflareCheck() {
 }
 
 const getAccessToken = async (cookieString) => {
-  const response = await fetch(ChatGPT_Auth_Endpoint, {
+  let response = await fetch(ChatGPT_Auth_Endpoint, {
     headers: {
       cookie: cookieString,
     },
@@ -23,27 +23,28 @@ const getAccessToken = async (cookieString) => {
 
   const statusCode = await response.status;
 
+  console.log(response);
+
   if (statusCode === 403) {
     try {
-      console.log("cloudflare");
       const cloudflareStatus = await handleCloudflareCheck();
-      await updateMultiUtilButton(tabId, "refreshed");
+      // await updateMultiUtilButton(tabId, "refreshed");
       response = await fetch(ChatGPT_Auth_Endpoint, {
         headers: {
           cookie: cookieString,
         },
       });
     } catch (error) {
-      await updateMultiUtilButton(tabId, "cloudflare-captcha");
+      console.log(error);
+      // await updateMultiUtilButton(tabId, "cloudflare-captcha");
       return {error: "Rate limit exceeded."}
     }
-  }
-  
-  if (statusCode !== 200) {
     return {error: "Rate limit exceeded."}
   }
 
   const json = await response.json();
+
+  console.log(json);
 
   if (json.details === "Rate limit exceeded") {
     return {error: json.details};
