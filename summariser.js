@@ -1057,6 +1057,16 @@ function MultiUtilButton() {
   return button;
 }
 
+function Settings() {
+  const settingsContainer = document.createElement("div");
+  settingsContainer.className = "settings-container";
+
+  const test = document.createElement("h1");
+  test.textContent = "Settings Page";
+
+  settingsContainer.appendChild(test);
+}
+
 // the ToolBar is the component under .textarea-container
 function ToolBar() {
   const container = document.createElement("div");
@@ -1068,6 +1078,14 @@ function ToolBar() {
 
   settings.addEventListener("click", (event) => {
     event.preventDefault();
+    const extension = document.querySelector(".summariser-extension");
+
+    if (!document.querySelector(".settings-container")) {
+      extension.appendChild(Settings());
+    }
+
+    const settingsContainer = document.querySelector(".settings-container");
+    settingsContainer.style.display === "none" ? settingsContainer.style.display = "flex" : settingsContainer.style.display = "none";
   })
 
   const themeButton = document.createElement("button");
@@ -1194,7 +1212,7 @@ async function handleError(statusText) {
     try {
       const response = await updateAccessToken();
     } catch(error) {
-      console.log("no retry");
+      console.log(error);
       multiUtilButton.className = "multi-util-oauth-setup"
       multiUtilButton.textContent = "Unknown error occurred. Refresh & Retry.";
       shouldRetry = false;
@@ -1283,7 +1301,8 @@ async function sendmessageToChatGPT(message, messageType = "normal", encodingEna
     if (await conversation.ok === false) {
       const shouldRetry = await handleError(await conversation.statusText);
       const multiUtilButton = document.querySelector("[class^='multi-util']");
-
+      
+      console.log(shouldRetry);
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       multiUtilButton.className = "multi-util-hidden"

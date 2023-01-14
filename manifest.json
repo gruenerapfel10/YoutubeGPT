@@ -2,7 +2,7 @@
 
     "manifest_version": 2,
     "name": "YoutubeGPT - Youtube Video Summary",
-    "version": "1.1.7",
+    "version": "1.1.9",
     "description": "Summarize any-length youtube videos in minutes, save time, become more productive, be a better learner. Embedded GUI for youtube videos, click to see example of how it works. Ask questions about the video. Powered by ChatGPT.",
     "icons": {
     },

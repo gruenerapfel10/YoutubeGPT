@@ -39,7 +39,6 @@ const getAccessToken = async (cookieString) => {
       // await updateMultiUtilButton(tabId, "cloudflare-captcha");
       return {error: "Rate limit exceeded."}
     }
-    return {error: "Rate limit exceeded."}
   }
 
   const json = await response.json();
