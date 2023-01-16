@@ -524,9 +524,11 @@ function updateMessages() {
   }
 }
 
-waitForElement("#above-the-fold > #title").then(() => {
-  init();
-})
+if (window.location.href.indexOf(".music.") > 0) {
+  waitForElement("#above-the-fold > #title").then(() => {
+      init();
+  })
+}
 
 function init() {
   const buttons = document.querySelectorAll(".summary-toggle-button");
