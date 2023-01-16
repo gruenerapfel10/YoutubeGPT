@@ -524,7 +524,7 @@ function updateMessages() {
   }
 }
 
-if (window.location.href.indexOf(".music.") > 0) {
+if (window.location.href.indexOf(".music.") < 0) {
   waitForElement("#above-the-fold > #title").then(() => {
       init();
   })
